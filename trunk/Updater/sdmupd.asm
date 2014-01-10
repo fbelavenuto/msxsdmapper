@@ -107,8 +107,12 @@ checkFlash:
 ; ------------------------
 ; checkDeviceID
 ; Check Flash Manufacturer and Device ID
-; SST29EE010 = BF 07
 ; Z = 1 if Flash found
+;
+; AT49(H)F010 = $1F $17
+; W39F010     = $DA $A1
+; SST39SF020  = $BF $B6
+;
 ; -------------------------
 checkDeviceID:
 	di
@@ -117,11 +121,26 @@ checkDeviceID:
 	ld		a, $90						; Comando $90 (Software ID Entry)
 	call	flashSendCommand2
 	ld		a, ($8000)					; Read Manufacturer ID
-	cp		$BF							; ID da SST eh $BF
+	cp		$1F							; is ATMEL?
+	jr		z, .tAT49
+	cp		$DA							; is Winbond?
+	jr		z, .tW39
+	cp		$BF							; is SST?
 	jr		nz, .sair
-	ld		a, ($8001)					; Read Device ID
-	cp		$B6							; ID da SST29EE010 eh $07, SST39SF020 é $B6
+	ld		a, ($8001)					; SST39SF020?
+	cp		$B6
 	jr		nz, .sair
+	jr		.ok
+.tAT49:
+	ld		a, ($8001)					; AT49(H)F010?
+	cp		$17
+	jr		nz, .sair
+	jr		.ok
+.tW39:
+	ld		a, ($8001)					; W39SF010?
+	cp		$17
+	jr		nz, .sair
+.ok:
 	xor		a							; Z = 1
 .sair:
 	push	af
