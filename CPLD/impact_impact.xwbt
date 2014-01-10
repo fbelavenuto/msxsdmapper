@@ -1,0 +1,8 @@
+INTSTYLE=impact
+INFILE=D:\Dropbox\My Dropbox\8bits\MSX\SDMapper\CPLD\impact.xsl
+OUTFILE=D:\Dropbox\My Dropbox\8bits\MSX\SDMapper\CPLD\impact.xsl
+FAMILY=Single
+PART=Single
+WORKINGDIR=D:\Dropbox\My Dropbox\8bits\MSX\SDMapper\CPLD
+LICENSE=iMPACT
+USER_INFO=iMPACT
