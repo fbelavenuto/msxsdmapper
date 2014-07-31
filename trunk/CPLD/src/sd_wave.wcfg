@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="D:/Nuvem/Dropbox/8bits/MSX/SDMapper/sdmapper3/CPLD/sd_tb_isim_beh.wdb" id="1" type="auto">
+         <top_modules>
+            <top_module name="numeric_std" />
+            <top_module name="sd_tb" />
+            <top_module name="std_logic_1164" />
+            <top_module name="vcomponents" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <WVObjectSize size="27" />
+   <wvobject fp_name="/sd_tb/dis_mapper" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">dis_mapper</obj_property>
+      <obj_property name="ObjectShortName">dis_mapper</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/mr_mp" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">mr_mp</obj_property>
+      <obj_property name="ObjectShortName">mr_mp</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/clock_msx" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">clock_msx</obj_property>
+      <obj_property name="ObjectShortName">clock_msx</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/clock" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">clock</obj_property>
+      <obj_property name="ObjectShortName">clock</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/reset_n" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">reset_n</obj_property>
+      <obj_property name="ObjectShortName">reset_n</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/cs" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">cs</obj_property>
+      <obj_property name="ObjectShortName">cs</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/addr_bus" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">addr_bus</obj_property>
+      <obj_property name="ObjectShortName">addr_bus</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/wr_n" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">wr_n</obj_property>
+      <obj_property name="ObjectShortName">wr_n</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/rd_n" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">rd_n</obj_property>
+      <obj_property name="ObjectShortName">rd_n</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/sd_writeprot" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">sd_writeprot[1:0]</obj_property>
+      <obj_property name="ObjectShortName">sd_writeprot[1:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/sd_inserted" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">sd_inserted[1:0]</obj_property>
+      <obj_property name="ObjectShortName">sd_inserted[1:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/data_bus" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">data_bus[7:0]</obj_property>
+      <obj_property name="ObjectShortName">data_bus[7:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/sd_cs" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">sd_cs[1:0]</obj_property>
+      <obj_property name="ObjectShortName">sd_cs[1:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/sd_sclk" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">sd_sclk</obj_property>
+      <obj_property name="ObjectShortName">sd_sclk</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/sd_mosi" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">sd_mosi</obj_property>
+      <obj_property name="ObjectShortName">sd_mosi</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/sd_miso" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">sd_miso</obj_property>
+      <obj_property name="ObjectShortName">sd_miso</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/uut/port1_reg" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">port1_reg[7:0]</obj_property>
+      <obj_property name="ObjectShortName">port1_reg[7:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/uut/state" type="other" db_ref_id="1">
+      <obj_property name="ElementShortName">state</obj_property>
+      <obj_property name="ObjectShortName">state</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/uut/shift_reg" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">shift_reg[7:0]</obj_property>
+      <obj_property name="ObjectShortName">shift_reg[7:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/uut/spi_data_buf" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">spi_data_buf[7:0]</obj_property>
+      <obj_property name="ObjectShortName">spi_data_buf[7:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/uut/start" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">start</obj_property>
+      <obj_property name="ObjectShortName">start</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/uut/count" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">count[3:0]</obj_property>
+      <obj_property name="ObjectShortName">count[3:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/uut/spi_clk_buf" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">spi_clk_buf</obj_property>
+      <obj_property name="ObjectShortName">spi_clk_buf</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/uut/prev_spi_clk" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">prev_spi_clk</obj_property>
+      <obj_property name="ObjectShortName">prev_spi_clk</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/uut/spi_clk_out" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">spi_clk_out</obj_property>
+      <obj_property name="ObjectShortName">spi_clk_out</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/uut/ff_q" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">ff_q</obj_property>
+      <obj_property name="ObjectShortName">ff_q</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sd_tb/uut/ff_clr" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">ff_clr</obj_property>
+      <obj_property name="ObjectShortName">ff_clr</obj_property>
+   </wvobject>
+</wave_config>

@@ -1,3 +1,11 @@
+06/07/2014:
+  Alterado lógica do CPLD para porta SPI trabalhar assincronicamente. Não
+é mais necessário depender do clock do barramento.
+
+15/01/2014:
+  Adicionado circuito da Megaram (by Ademir Carchano) e uma chave para poder
+selecionar se a interface irá implementar uma Mapper ou uma Megaram.
+  Layout da PCB desenhado pelo Luciano Sturaro.
 
 02/01/2014:
-  First release.
+  Primeira versão.

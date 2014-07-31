@@ -17,10 +17,11 @@
 BIOS_CHPUT	= $A2						; A=char
 BIOS_CLS	= $C3						; Chamar com A=0
 
-; Portas I/O
+; Enderecos SPI
 
-PORTCFG	= 8
-PORTSPI	= 9
+CHAVEIASPI	= $6001
+PORTCFG		= $4800
+PORTSPI		= $4000
 
 ; Comandos SPI:
 CMD0	= 0  | $40
@@ -77,7 +78,7 @@ CODE_ADD:	equ	0F84Ch
 
 VER_MAIN	equ	1
 VER_SEC		equ	0
-VER_REV		equ	2
+VER_REV		equ	4
 
 
 ;-----------------------------------------------------------------------------
@@ -262,6 +263,11 @@ DRV_TIMI:
 	ret
 
 
+; pula regiao da porta SPI
+
+	ds	$4800-$, $FF
+
+
 ;-----------------------------------------------------------------------------
 ;
 ; Driver initialization routine, it is called twice:
@@ -303,14 +309,17 @@ DRV_INIT:
 	call	pegaWorkArea
 	ld		de, strTitulo				; imprimir titulo
 	call	printString
-	ld		de, strMapper				; imprimir status da mapper
-	call	printString
-	ld		de, strAtiva
-	in		a, (PORTCFG)				; testar se mapper esta ativa
+	ld		de, strMr_mp_desativada
+	call	modoSPI
+	ld		a, (PORTCFG)				; testar se mapper/megaram esta ativa
 	and		$10
-	jr		nz, .printMapper
-	ld		de, strDesat
-.printMapper:
+	jr		z, .print					; desativada, pula
+	ld		de, strMapper
+	ld		a, (PORTCFG)				; ativa, testar se eh mapper ou megaram
+	and		$20
+	jr		nz, .print
+	ld		de, strMegaram				; Megaram ativa
+.print:
 	call	printString
 	ld		de, strCrLf
 	call	printString
@@ -322,6 +331,7 @@ DRV_INIT:
 	call	.detecta
 	ld		bc, 0
 	ld		e, 5
+	call	modoROM
 .wait:									; esperar um pouco para dar tempo
 	nop									; de ler mensagens
 	dec		bc
@@ -344,7 +354,7 @@ DRV_INIT:
 	ld		a, ' '
 	call	BIOS_CHPUT
 	ld		c, (iy+NUMSD)
-	in		a, (PORTCFG)				; testar se cartao esta inserido
+	ld		a, (PORTCFG)				; testar se cartao esta inserido
 	and		c							; C contem 1 se cartao 1, 2 se cartao 2
 	jr		z, .naoVazio
 	ld		de, strVazio				; nao tem cartao no slot
@@ -353,6 +363,7 @@ DRV_INIT:
 .naoVazio:
 	call	detectaCartao				; tem cartao no slot, inicializar e detectar
 	jr		nc, .detectou
+	call	desabilitaSDs
 	ld		de, strNaoIdentificado
 	call	printString
 .marcaErro:
@@ -526,7 +537,9 @@ leitura:
 	ld		d, a
 	pop		af							; HL = ponteiro destino
 	ld		e, a						; BC DE = 32 bits numero do bloco
+	call	modoSPI
 	call	LerBloco					; chamar rotina de leitura de dados
+	call	modoROM
 	jr		nc, .ok
 	call	marcaErroCartao				; ocorreu erro na leitura, marcar erro
 ;	ld		a, ENRDY					; Not ready
@@ -560,7 +573,9 @@ escrita:
 	ld		d, a
 	pop		af							; HL = ponteiro destino
 	ld		e, a						; BC DE = 32 bits numero do bloco
+	call	modoSPI
 	call	GravarBloco					; chamar rotina de gravacao de dados
+	call	modoROM
 	jr		nc, .ok2
 	call	marcaErroCartao				; ocorreu erro, marcar nas flags
 	ld		a, EWRERR					; Write error
@@ -750,13 +765,17 @@ DEV_STATUS:
 	pop		af
 	ld		(iy+NUMSD), a				; salva numero do device atual (1 ou 2)
 	ld		c, a
-	in		a, (PORTCFG)				; testar se cartao esta inserido
+	call	modoSPI
+	ld		a, (PORTCFG)				; testar se cartao esta inserido
+	call	modoROM
 	and		c							; C contem 1 se cartao 1, 2 se cartao 2
 	jr		nz, .cartaoComErro			; se slot do cartao estiver vazio, marcamos o erro nas flags
 	ld		a, (iy+FLAGSCARTAO)			; testar bit de erro do cartao nas flags
 	and		c
 	jr		z, .semMudanca				; cartao nao marcado com erro, pula
+	call	modoSPI
 	call	detectaCartao				; erro na deteccao do cartao, tentar re-detectar
+	call	modoROM
 	jr		c, .cartaoComErro			; nao conseguimos detectar, sai com erro
 	ld		a, (iy+NUMSD)				; conseguimos detectar, tira erro nas flags
 	cpl									; inverte bits para fazer o AND
@@ -878,6 +897,7 @@ pegaWorkArea:
 	ex		af, af'
 	xor		a
 	ld		ix, GWORK
+	call	modoROM
 	call	CALBNK
 	ld		l, (ix)			; em HL tem o ponteiro da nossa area da RAM
 	ld		h, (ix+1)
@@ -898,7 +918,9 @@ testaCartao:
 	pop		af
 	ld		(iy+NUMSD), a				; salva numero do device atual (1 ou 2)
 	ld		c, a
-	in		a, (PORTCFG)				; testar se cartao esta inserido
+	call	modoSPI
+	ld		a, (PORTCFG)				; testar se cartao esta inserido
+	call	modoROM
 	and		c							; C contem 1 se cartao 1, 2 se cartao 2
 	jr		nz, .saicomerro				
 	ld		a, (iy+FLAGSCARTAO)			; testar bit de erro do cartao nas flags
@@ -936,7 +958,9 @@ testaWP:
 	ld		c, (iy+NUMSD)				; cartao atual (1 ou 2)
 	rlc		c							; desloca para apontar para bits 2 ou 3 para cartoes 1 ou 2 respectivamente
 	rlc		c
-	in		a, (PORTCFG)				; testar se cartao esta protegido
+	call	modoSPI
+	ld		a, (PORTCFG)				; testar se cartao esta protegido
+	call	modoROM
 	and		c
 	ret									; se A for 0 cartao esta protegido
 
@@ -1013,14 +1037,14 @@ detectaCartao:
 	ret	c
 	ld		a, CMD58						; ler OCR
 	ld		de, 0
-	call	SD_SEND_CMD_2_ARGS_GET_R3		; envicar comando e receber resposta tipo R3
+	call	SD_SEND_CMD_2_ARGS_GET_R3		; enviar comando e receber resposta tipo R3
 	ret	c
 	ld		a, b							; testa bit CCS do OCR que informa se cartao eh SDV1 ou SDV2
 	and		$40
 	ld		(ix+15), a						; salva informacao da versao do SD (V1 ou V2) no byte 15 do CID
 	call	z, mudarTamanhoBlocoPara512		; se bit CCS do OCR for 1, eh cartao SDV2 (Block address - SDHC ou SDXD)
 	ret c									; e nao precisamos mudar tamanho do bloco para 512
-
+	call	desabilitaSDs
 											; agora vamos calcular o total de blocos dependendo dos dados do CSD
 	call	calculaBLOCOSoffset				; calcular em IX e HL o offset correto do buffer que armazena total de blocos
 	push	iy								; copiamos IY para HL
@@ -1148,7 +1172,7 @@ mudarTamanhoBlocoPara512:
 	ld		a, CMD16
 	ld		bc, 0
 	ld		de, 512
-	jr		SD_SEND_CMD_GET_ERROR
+	jp		SD_SEND_CMD_GET_ERROR
 
 ; ------------------------------------------------
 ; Tenta inicializar um cartao SDV2, se houver erro
@@ -1196,14 +1220,15 @@ lerBlocoCxD:
 	ret	c
 	call	WAIT_RESP_FE
 	ret	c
-	ld		b, 16						; registros CSD e CID tem 16 bytes
-	ld		c, PORTSPI
-	inir
+	ld		de, PORTSPI
+	ex		hl, de
+	.16		ldi							; 16 vezes o opcode LDI
 	nop
-	in		a, (c)
+	ld		a, (hl)
 	nop
-	in		a, (c)						; byte de resposta
+	ld		a, (hl)						; byte de resposta
 	or		a
+	ex		hl, de
 	jr		desabilitaSDs
 
 ; ------------------------------------------------
@@ -1216,7 +1241,7 @@ iniciaSD:
 	ld		b, 10						; enviar 80 pulsos de clock com cartao desabilitado
 enviaClocksInicio:
 	ld		a, $FF						; manter MOSI em 1
-	out		(PORTSPI), a
+	ld		(PORTSPI), a
 	djnz	enviaClocksInicio
 	call	setaSDAtual					; ativar cartao atual
 	ld		b, 8						; 8 tentativas para CMD0
@@ -1238,7 +1263,7 @@ SD_SEND_CMD0:
 desabilitaSDs:
 	push	af
 	ld		a, $FF						; todos os /CS em 1
-	out		(PORTCFG), a
+	ld		(PORTCFG), a
 	pop		af
 	ret
 
@@ -1312,20 +1337,20 @@ SD_SEND_CMD_2_ARGS_GET_R3:
 ; ------------------------------------------------
 SD_SEND_CMD:
 	call	setaSDAtual
-	out		(PORTSPI), a
+	ld		(PORTSPI), a
 	push	af
 	ld		a, b
 	nop
-	out		(PORTSPI), a
+	ld		(PORTSPI), a
 	ld		a, c
 	nop
-	out		(PORTSPI), a
+	ld		(PORTSPI), a
 	ld		a, d
 	nop
-	out		(PORTSPI), a
+	ld		(PORTSPI), a
 	ld		a, e
 	nop
-	out		(PORTSPI), a
+	ld		(PORTSPI), a
 	pop		af
 	cp		CMD0
 	ld		b, $95						; CRC para CMD0
@@ -1336,7 +1361,7 @@ SD_SEND_CMD:
 	ld		b, $FF						; CRC dummy
 enviaCRC:
 	ld		a, b
-	out		(PORTSPI), a
+	ld		(PORTSPI), a
 	jr		WAIT_RESP_NO_FF
 
 ; ------------------------------------------------
@@ -1363,7 +1388,7 @@ WAIT_RESP_FE:
 WAIT_RESP_NO_FF:
 	ld		bc, 100						; 100 tentativas
 .loop:
-	in		a, (PORTSPI)
+	ld		a, (PORTSPI)
 	cp		$FF							; testa $FF
 	ret	nz								; sai se nao for $FF
 	djnz	.loop
@@ -1379,7 +1404,7 @@ WAIT_RESP_NO_FF:
 WAIT_RESP_NO_00:
 	ld		bc, 32768					; 32768 tentativas
 .loop:
-	in		a, (PORTSPI)
+	ld		a, (PORTSPI)
 	or		a
 	ret	nz								; se resposta for <> $00, sai
 	djnz	.loop
@@ -1394,10 +1419,10 @@ WAIT_RESP_NO_00:
 ; ------------------------------------------------
 setaSDAtual:
 	push	af
-	in		a, (PORTSPI)				; dummy read
+	ld		a, (PORTSPI)				; dummy read
 	ld		a, (iy+NUMSD)
 	cpl									; inverte bits
-	out		(PORTCFG), a
+	ld		(PORTCFG), a
 	pop		af
 	ret
 
@@ -1415,7 +1440,7 @@ GravarBloco:
 	call	setaSDAtual					; selecionar cartao atual
 	ld		a, (iy+NUMBLOCOS)			; testar se Nextor quer gravar 1 ou mais blocos
 	dec		a
-	jr		z, .umBloco					; somente um bloco, gravar usando CMD24
+	jp		z, .umBloco					; somente um bloco, gravar usando CMD24
 
 ; multiplos blocos
 	push	bc
@@ -1429,20 +1454,19 @@ GravarBloco:
 	call	SD_SEND_CMD_GET_ERROR
 	pop		de
 	pop		bc
-	jr		c, .erro					; erro no ACMD23
+	jp		c, .erro					; erro no ACMD23
 	ld		a, CMD25					; comando CMD25 = write multiple blocks
 	call	SD_SEND_CMD_GET_ERROR
-	jr		c, .erro					; erro
+	jp		c, .erro					; erro
 .loop:
 	ld		a, $FC						; mandar $FC para indicar que os proximos dados sao
-	out		(PORTSPI),	a				; dados para gravacao
-	ld		bc, PORTSPI					; zera B para mandar 256 bytes com um OTIR
-	otir
-	otir
+	ld		(PORTSPI),	a				; dados para gravacao
+	ld		de, PORTSPI
+	.512	ldi							; 512 vezes o opcode LDI
 	ld		a, $FF						; envia dummy CRC
-	out		(PORTSPI),	a
+	ld		(PORTSPI),	a
 	nop
-	out		(PORTSPI),	a
+	ld		(PORTSPI),	a
 	call	WAIT_RESP_NO_FF				; esperar cartao
 	and		$1F							; testa bits erro
 	cp		5
@@ -1452,17 +1476,17 @@ GravarBloco:
 	ld		a, (iy+NUMBLOCOS)			; testar se tem mais blocos para gravar
 	dec		a
 	ld		(iy+NUMBLOCOS), a
-	jr		nz, .loop
-	in		a, (PORTSPI)				; acabou os blocos, fazer 2 dummy reads
+	jp		nz, .loop
+	ld		a, (PORTSPI)				; acabou os blocos, fazer 2 dummy reads
 	nop
-	in		a, (PORTSPI)
+	ld		a, (PORTSPI)
 	ld		a, $FD						; enviar $FD para informar ao cartao que acabou os dados
-	out		(PORTSPI),	a
+	ld		(PORTSPI),	a
 	nop
 	nop
-	in		a, (PORTSPI)				; dummy reads
+	ld		a, (PORTSPI)				; dummy reads
 	nop
-	in		a, (PORTSPI)
+	ld		a, (PORTSPI)
 	call	WAIT_RESP_NO_00				; esperar cartao
 	jp		.fim						; CMD25 concluido, sair informando nenhum erro
 
@@ -1472,21 +1496,20 @@ GravarBloco:
 	jr		nc, .ok
 .erro:
 	scf									; informar erro
-	jr		terminaLeituraEscritaBloco
+	jp		terminaLeituraEscritaBloco
 .ok:
 	ld		a, $FE						; mandar $FE para indicar que vamos mandar dados para gravacao
-	out		(PORTSPI),	a
-	ld		bc, PORTSPI					; zera B para mandar 256 bytes com um OTIR
-	otir
-	otir
+	ld		(PORTSPI),	a
+	ld		de, PORTSPI
+	.512	ldi
 	ld		a, $FF						; envia dummy CRC
-	out		(PORTSPI),	a
+	ld		(PORTSPI),	a
 	nop
-	out		(PORTSPI),	a
+	ld		(PORTSPI),	a
 	call	WAIT_RESP_NO_FF				; esperar cartao
 	and		$1F							; testa bits erro
 	cp		5
-	jr		nz, .erro					; resposta errada, informar erro
+	jp		nz, .erro					; resposta errada, informar erro
 .esp:
 	call	WAIT_RESP_NO_FF				; esperar cartao
 	or		a
@@ -1512,26 +1535,27 @@ LerBloco:
 	call	setaSDAtual
 	ld		a, (iy+NUMBLOCOS)			; testar se Nextor quer ler um ou mais blocos
 	dec		a
-	jr		z, .umBloco					; somente um bloco, pular
+	jp		z, .umBloco					; somente um bloco, pular
 
 ; multiplos blocos
 	ld		a, CMD18					; ler multiplos blocos com CMD18 = Read Multiple Blocks
 	call	SD_SEND_CMD_GET_ERROR
-	jr		c, .erro
+	jp		c, .erro
 .loop:
 	call	WAIT_RESP_FE
-	jr		c, .erro
-	ld		bc, PORTSPI					; zerar B para efetuar 256 leituras com um INIR
-	inir
-	inir
+	jp		c, .erro
+	ld		de, PORTSPI
+	ex		hl, de
+	.512	ldi
+	ex		hl, de
 	nop
-	in		a, (PORTSPI)				; descarta CRC
+	ld		a, (PORTSPI)				; descarta CRC
 	nop
-	in		a, (PORTSPI)
+	ld		a, (PORTSPI)
 	ld		a, (iy+NUMBLOCOS)			; testar se tem mais blocos para ler
 	dec		a
 	ld		(iy+NUMBLOCOS), a
-	jr		nz, .loop
+	jp		nz, .loop
 	ld		a, CMD12					; acabou os blocos, mandar CMD12 para cancelar leitura
 	call	SD_SEND_CMD_NO_ARGS
 	jp		.fim
@@ -1542,20 +1566,21 @@ LerBloco:
 	jr		nc, .ok
 .erro:
 	scf
-	jr		terminaLeituraEscritaBloco
+	jp		terminaLeituraEscritaBloco
 .ok:
 	call	WAIT_RESP_FE
 	jr		c, .erro
-	ld		bc, PORTSPI					; zerar B para efetuar 256 leituras com um INIR
-	inir
-	inir
+	ld		de, PORTSPI
+	ex		hl, de
+	.512	ldi
+	ex		hl, de
 	nop
-	in		a, (PORTSPI)				; descarta CRC
+	ld		a, (PORTSPI)				; descarta CRC
 	nop
-	in		a, (PORTSPI)
+	ld		a, (PORTSPI)
 .fim:
 	xor		a							; zera carry para informar leitura sem erros
-	jr		terminaLeituraEscritaBloco
+	jp		terminaLeituraEscritaBloco
 
 ; ------------------------------------------------
 ; Converte blocos para bytes. Na pratica faz
@@ -1574,6 +1599,26 @@ blocoParaByte:
 ; ------------------------------------------------
 ; Funcoes utilitarias
 ; ------------------------------------------------
+
+; ------------------------------------------------
+; Chaveia para modo SPI
+; ------------------------------------------------
+modoSPI:
+	push	af
+	ld		a, 1
+	ld		(CHAVEIASPI), a
+	pop		af
+	ret
+
+; ------------------------------------------------
+; Chaveia para modo ROM
+; ------------------------------------------------
+modoROM:
+	push	af
+	ld		a, 0
+	ld		(CHAVEIASPI), a
+	pop		af
+	ret
 
 ; ------------------------------------------------
 ; Imprime string na tela apontada por DE
@@ -1758,12 +1803,14 @@ tblFabricantes:
 
 ; ------------------------------------------------
 strTitulo:
-	db		"Nextor SDMapper Driver",13,10
+	db		"SD Mapper/Megaram",13,10
+	db		"Nextor Driver",13,10
 	db		"Versao "
 	db		VER_MAIN + $30, '.', VER_SEC + $30, '.', VER_REV + $30
 	db		13, 10
 	db		"Copyright (c) 2014",13,10
 	db		"Fabio Belavenuto",13,10
+	db		"PCB por Luciano Sturaro",13,10
 	db		"Licenced under",13,10
 	db		"CERN OHL v1.1",13,10
 	db		"http://ohwr.org/cernohl",13,10
@@ -1776,12 +1823,12 @@ strVazio:
 	db		"Vazio",13,10,0
 strNaoIdentificado:
 	db		"Nao identificado!",13,10,0
+strMr_mp_desativada:
+	db		"Mapper/megaram desativada",13,10,0
 strMapper:
-	db		"Mapper ",0
-strAtiva:
-	db		"ativada",13,10,0
-strDesat:
-	db		"desativada",13,10,0
+	db		"Mapper ativada",13,10,0
+strMegaram:
+	db		"Megaram ativada",13,10,0
 strSDV1:
 	db		"SDV1 - ",0
 strSDV2:
@@ -1795,4 +1842,3 @@ DRV_END:
 
 	ds	3ED0h-(DRV_END-DRV_START), $FF
 
-	end
