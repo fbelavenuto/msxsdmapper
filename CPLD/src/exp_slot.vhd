@@ -24,7 +24,7 @@ entity exp_slot is
 		cpu_rd_n	: in    std_logic;								-- /RD da CPU
 		cpu_wr_n	: in    std_logic;								-- /WR da CPU
 		ffff		: in    std_logic;								-- 1 quando CPU_A = FFFF
-		cpu_a		: in    std_logic_vector(15 downto 14);	-- Barramento de enderecoo da CPU (bits 15 e 14)
+		cpu_a		: in    std_logic_vector(15 downto 14);	-- Barramento de endereco da CPU (bits 15 e 14)
 		cpu_d		: inout std_logic_vector(7 downto 0);		-- Barramento de dados da CPU
 		exp_n		: out   std_logic_vector(3 downto 0)		-- Saida 4 bits do expansor (ativo em 0)
 	);

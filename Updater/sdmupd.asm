@@ -24,10 +24,11 @@
 
 
 ; *** CONSTANTS ***
-IOFW		= $B7						; Porta de controle para gravacao da flash
+IOFW		= $5F						; Porta de controle para gravacao da flash
+ALG_BYTE	= 1
+ALG_PAGE	= 2
 
 inicio:
-	jp		init
 
 ; **** MAIN PROGRAM ****
 
@@ -44,6 +45,11 @@ init:
 	call	checkDOS					; Dos version checked
 	call	checkSystem					; MSX Type checked
 	call	checkParams					; Check and Save parameters
+
+	ld		a, (options)
+	bit		1, a						; only list chips?
+	jp		nz, showList				; yes, jump
+
 	call	checkFlash     				; Search FLASH ROM
 
 	ld		a, (options)
@@ -69,13 +75,14 @@ checkFlash:
 	ld		a, $FF
 	ld		(thisslt), a				; Inits SIGSLOT Routine
 .loop:
+	di
 	call	sigslot						; Calls the next slot (first one if first time)
 	cp		$FF							; Is it the last slot?
 	jr		z, .naoachado				; Yes. FLASH was not found
 	ld		h, $80						; It is not the last slot. Placed it in page 2
 	call	ENASLT
 	call	checkDeviceID				; Searching flash by executing its ID_CHECK command
-	jr		nz, .loop					; Not found in this slot, continue with next one
+	jr		c, .loop					; Not found in this slot, continue with next one
 
 	ld		a, (thisslt)				; FLASH WAS FOUND
 	ld		(flashslt), a				; Slot saved
@@ -95,7 +102,13 @@ checkFlash:
 	call	ENASLT						; Restoring page 2 (Memory again)
 
 	ld		de, strAchado
-	jp		print						; Printing message with info about slot / subslot
+	call	print						; Printing message with info about slot / subslot
+	ld		de, (flashManPoint)			; recuperamos string do fabricante
+	call	print
+	ld		de, (flashProdPoint)		; recuperamos string do produto
+	call	print						; e imprimimos
+	ld		de, strCrLf
+	jp		print
 
 .naoachado:								; FLASH NOT FOUND
 	ld		a, (RAMAD2)
@@ -109,10 +122,6 @@ checkFlash:
 ; Check Flash Manufacturer and Device ID
 ; Z = 1 if Flash found
 ;
-; AT49(H)F010 = $1F $17
-; W39F010     = $DA $A1
-; SST39SF020  = $BF $B6
-;
 ; -------------------------
 checkDeviceID:
 	di
@@ -120,28 +129,17 @@ checkDeviceID:
 	call	flashSendCommand2
 	ld		a, $90						; Comando $90 (Software ID Entry)
 	call	flashSendCommand2
-	ld		a, ($8000)					; Read Manufacturer ID
-	cp		$1F							; is ATMEL?
-	jr		z, .tAT49
-	cp		$DA							; is Winbond?
-	jr		z, .tW39
-	cp		$BF							; is SST?
-	jr		nz, .sair
-	ld		a, ($8001)					; SST39SF020?
-	cp		$B6
-	jr		nz, .sair
-	jr		.ok
-.tAT49:
-	ld		a, ($8001)					; AT49(H)F010?
-	cp		$17
-	jr		nz, .sair
-	jr		.ok
-.tW39:
-	ld		a, ($8001)					; W39SF010?
-	cp		$17
-	jr		nz, .sair
+	ld		a, ($8000)					; Ler Manufacturer ID
+	ld		(flashIdMan), a				; e salvar
+	ld		a, ($8001)					; Ler Product ID
+	ld		(flashIdProd), a			; e salvar
+	call	flashIdent					; chamamos funcao que identifica flash
+	ld		a, (flashAlg)
+	cp		0
+	scf									; Carry = 1 - erro
+	jr		z, .sair					; se A for zero nao identificamos
 .ok:
-	xor		a							; Z = 1
+	xor		a							; Carry = 0 - OK
 .sair:
 	push	af
 	ld		a, $F0						; Comando $F0 (Reset)
@@ -266,7 +264,8 @@ checkFileName:
 ; --------------------------------------
 ; checkOptions
 ; OPTIONS :
-;             0 - erase flash only  /e
+;			0 - erase flash only	/e
+;			1 - show list of chips	/l
 ;
 ; ---------------------------------------
 checkOptions:
@@ -298,9 +297,9 @@ checkOptions:
 	ld		c, 1
 	cp		'e'
 	jr		z, .achado
-;	sla		c
-;	cp		'x'
-;	jr		z, .achado
+	sla		c
+	cp		'l'
+	jr		z, .achado
 	ret
 .achado:
 	ld		a, (options)
@@ -953,6 +952,92 @@ readMax:
 	ld		hl, (sizefiletmp)
 	jr		.readmaxend
 
+; ----------------------
+; ShowList
+; Exibe a lista de flashs
+; suportadas
+; ----------------------
+showList:
+	ld		de, strListaCab
+	call	print
+	ld		hl, tblFlash				; HL aponta para inicio da tabela
+.loop:
+	ld		a, (hl)
+	cp		0							; acabou a tabela?
+	jp		z, exit
+	ld		(flashIdMan), a				; salva ID do fabricante
+	inc		hl
+	ld		a, (hl)						; pega ID do produto
+	ld		(flashIdProd), a			; e salva
+	inc		hl
+	ld		de, (hl)					; vamos pegar a string do fabricante
+	ld		(flashManPoint), de			; e salvar
+	inc		hl
+	inc		hl
+	ld		de, (hl)					; vamos pegar a string do produto
+	ld		(flashProdPoint), de		; e salvar
+	inc		hl
+	inc		hl
+	ld		a, (hl)						; vamos pegar o algoritmo
+	ld		(flashAlg), a				; e salvar
+	inc		hl
+	push	hl
+	ld		de, (flashManPoint)
+	call	print
+	ld		de, (flashProdPoint)
+	call	print
+	ld		de, strCrLf
+	call	print
+	pop		hl
+	jr		.loop
+	ret
+
+; ----------------------
+; FlashIdent
+; Identifies Flash
+; ----------------------
+flashIdent:
+	push	hl
+	push	bc
+	push	de
+	ld		hl, tblFlash				; HL aponta para inicio da tabela
+	ld		a, (flashIdMan)
+	ld		b, a						; B contem ID do fabricante
+	ld		d, 0						; DE eh usado para incrementar HL para proxima entrada da tabela
+.loop:
+	ld		a, (hl)
+	cp		0							; acabou a tabela?
+	jr		z, .naoId					; entao nao identificamos
+	cp		b							; comparar ID do fabricante
+	jr		z, .idp						; bateu, vamos verificar o ID do produto
+	ld		e, 7
+	add		hl, de						; nao encontramos nessa entrada, vamos para a proxima
+	jr		.loop
+.idp:
+	inc		hl							; vamos comparar o ID do produto
+	ld		a, (flashIdProd)
+	cp		(hl)						; ID do produto bate?
+	jr		z, .ok						; beleza, identificamos a flash
+	ld		e, 6
+	add		hl, de						; ID do produto nao bateu, vamos para a proxima entrada
+	jr		.loop
+.ok:
+	inc		hl
+	ld		de, (hl)					; vamos pegar a string do fabricante
+	ld		(flashManPoint), de			; e salvar
+	inc		hl
+	inc		hl
+	ld		de, (hl)					; vamos pegar a string do produto
+	ld		(flashProdPoint), de		; e salvar
+	inc		hl
+	inc		hl
+	ld		a, (hl)						; vamos pegar o algoritmo
+	ld		(flashAlg), a				; e salvar
+.naoId:
+	pop		de
+	pop		bc
+	pop		hl
+	ret
 
 ; *** TEXTS ***
 
@@ -974,6 +1059,7 @@ strHelp:
 	.db		13, 10
 	.db		"Options:", 13, 10
 	.db		"     /h : Show this help.", 13, 10
+	.db		"     /l : Show list of supported chips.", 13, 10
 	.db		"     /e : Only erase flash and exit.", 13, 10
 	.db		'$'
 
@@ -991,8 +1077,11 @@ strAchado:
 	.db		'0'
 	.db		" subslot "
 .subslot:
-	.db		'0', 13, 10
+	.db		'0:', 13, 10
 	.db		'$'
+
+strTraco:
+	.db		" - $"
 
 strOk:
 	.db		" OK!", 13, 10
@@ -1035,14 +1124,104 @@ strGravando:
 
 strErroAoGravarFlash:
 	.db		13, 10
-	.db		"ERROR: Problems writing Flash ..."
-	.db		13, 10, '$'
+	.db		"ERROR: Problems writing Flash ...", 13, 10
+	.db		'$'
 
 strUpdateCompleto:
 	.db		13, 10
-	.db		"Flash programmed succesfully."
-	.db		13, 10, '$'
+	.db		"Flash programmed succesfully.", 13, 10
+	.db		'$'
 
+strListaCab:
+	.db		13, 10
+	.db		"List of supported flash chips:", 13, 10
+	.db		"------------------------------", 13, 10
+	.db		'$'
+
+; *** TABLES ***
+; AT49F002    = $1F $07		alg byte
+; AT49F002T   = $1F $08		alg byte
+; AT49(H)F010 = $1F $17		alg byte
+; AT29C010A   = $1F $D5		alg 128-page
+; AM29F010    = $20 $01		alg byte
+; SST29EE010  = $BF $07		alg 128-page
+; SST39SF020  = $BF $B6		alg byte
+; W49F002U/N  = $DA $0B		alg byte
+; W49F002B    = $DA $25		alg byte
+; W39F010     = $DA $A1		alg byte
+; 
+
+tblFlash:
+	.db		$1F, $07
+		.dw strAtmel
+		.dw strAt49f002
+		.db ALG_BYTE
+	.db		$1F, $08
+		.dw strAtmel
+		.dw	strAt49F002t
+		.db ALG_BYTE
+	.db		$1F, $17
+		.dw strAtmel
+		.dw	strAt49f010
+		.db ALG_BYTE
+	.db		$1F, $D5
+		.dw strAtmel
+		.dw strAt29c010a
+		.db ALG_PAGE
+	.db		$20, $01
+		.dw strAMD
+		.dw	strAm29F010
+		.db	ALG_BYTE
+	.db		$BF, $07
+		.dw	strSST
+		.dw	strSst29ee010
+		.db	ALG_PAGE
+	.db		$BF, $B6
+		.dw	strSST
+		.dw	strSst39sf020
+		.db	ALG_BYTE
+	.db		$DA, $0B
+		.dw	strWinb
+		.dw	strW49f002un
+		.db	ALG_BYTE
+	.db		$DA, $25
+		.dw	strWinb
+		.dw	strW49f002b
+		.db	ALG_BYTE
+	.db		$DA, $A1
+		.dw	strWinb
+		.dw	strW39f010
+		.db	ALG_BYTE
+	.db		0
+
+strAtmel:
+	.db		"Atmel $"
+strAMD:
+	.db		"AMD $"
+strSST:
+	.db		"SST $"
+strWinb:
+	.db		"Winbond $"
+strAt49f002:
+	.db		"AT49F002$"
+strAt49F002t:
+	.db		"AT49F002T$"
+strAt49f010:
+	.db		"AT49F010$"
+strAt29c010a:
+	.db		"AT29C010A$"
+strAm29F010:
+	.db		"AM29F010$"
+strSst29ee010:
+	.db		"SST29EE010$"
+strSst39sf020:
+	.db		"SST39SF020$"
+strW49f002un:
+	.db		"W49F002U/N$"
+strW49f002b:
+	.db		"W49F002B$"
+strW39f010:
+	.db		"W39F010$"
 
 ; *** VARIABLES ***
 
@@ -1056,6 +1235,11 @@ pages:			.db	0					; 16 Kb Pages
 actualpage:		.db	0					; Temporal page for load
 thisslt:		.db	0FFh				; sigslot flag
 flashslt:		.db	0					; slot for flash
+flashIdMan:		.db 0					; Flash Manufacturer ID
+flashIdProd:	.db 0					; Flash Product ID
+flashAlg		.db 0					; Flash algorithm
+flashManPoint:	.dw 0					; Flash manufacturer string pointer
+flashProdPoint:	.dw	0					; Flash product string pointer
 erasedelay:		.db	0					; tmp variable for loop times delay
 togglebit:		.db 0
 sizefiletmp:	.ds	4					; tmp variable for READMAX Code

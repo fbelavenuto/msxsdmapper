@@ -4,6 +4,7 @@
 NET "clock"  LOC = "P22"  ; 
 NET "reset_n"  LOC = "P99"  ; 
 NET "dis_mapper"  LOC = "P2"  ; 
+NET "mr_mp"  LOC = "P1"  ;
 NET "wr_n"  LOC = "P55"  ; 
 NET "rd_n"  LOC = "P56"  ; 
 NET "sltsl_n"  LOC = "P66"  ; 
@@ -38,7 +39,9 @@ NET "ram_a<17>"  LOC = "P86"  ;
 NET "ram_a<16>"  LOC = "P85"  ; 
 NET "ram_a<15>"  LOC = "P82"  ; 
 NET "ram_a<14>"  LOC = "P81"  ; 
+NET "ram_a<13>"  LOC = "P70"  ; 
 NET "ram_cs"  LOC = "P89"  ; 
+NET "ram_we"  LOC = "P65"  ; 
 NET "rom_a<16>"  LOC = "P80"  ; 
 NET "rom_a<15>"  LOC = "P79"  ; 
 NET "rom_a<14>"  LOC = "P78"  ; 
