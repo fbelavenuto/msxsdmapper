@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <report-views version="2.0" >
  <header>
-  <DateModified>2014-07-31T11:53:01</DateModified>
+  <DateModified>2014-09-07T13:57:21</DateModified>
   <ModuleName>sdmapper</ModuleName>
   <SummaryTimeStamp>2014-07-07T16:06:55</SummaryTimeStamp>
-  <SavedFilePath>D:/dirsvn/msxsdmapper/CPLD/iseconfig/sdmapper.xreport</SavedFilePath>
-  <ImplementationReportsDirectory>D:/dirsvn/msxsdmapper/CPLD\</ImplementationReportsDirectory>
+  <SavedFilePath>D:/dirsvn/8bits/msxsdmapper/CPLD/iseconfig/sdmapper.xreport</SavedFilePath>
+  <ImplementationReportsDirectory>D:/dirsvn/8bits/msxsdmapper/CPLD\</ImplementationReportsDirectory>
   <DateInitialized>2013-12-24T20:58:05</DateInitialized>
   <EnableMessageFiltering>false</EnableMessageFiltering>
  </header>

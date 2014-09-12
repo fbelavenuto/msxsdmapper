@@ -646,17 +646,18 @@ writeFlash:
 	pop		af
 	ret
 
-; program byte and check 3 times
+; program byte and check 30 times
 .gravaByte:
 	push	hl
 	push	de
 	push	bc
-	ld		c, 2
+	ld		c, 30
 .loop2:									; write byte loop
 	ld		a, (hl)
 	ld		(de), a
 .loop3:
 	nop									; little delay
+	nop
 	dec		c
 	ld		a, (de)
 	xor		(hl)
