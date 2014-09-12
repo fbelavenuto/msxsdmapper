@@ -1,8 +1,0 @@
-INTSTYLE=impact
-INFILE=D:\dirsvn\8bits\msxsdmapper\CPLD\impact.xsl
-OUTFILE=D:\dirsvn\8bits\msxsdmapper\CPLD\impact.xsl
-FAMILY=Single
-PART=Single
-WORKINGDIR=D:\dirsvn\8bits\msxsdmapper\CPLD
-LICENSE=iMPACT
-USER_INFO=iMPACT
