@@ -1,0 +1,3945 @@
+0001   0000             ; Projeto MSX SD Mapper
+0002   0000             
+0003   0000             ; Copyright (c) 2014
+0004   0000             ; Fabio Belavenuto
+0005   0000             
+0006   0000             ; This documentation describes Open Hardware and is licensed under the CERN OHL v. 1.1.
+0007   0000             ; You may redistribute and modify this documentation under the terms of the
+0008   0000             ; CERN OHL v.1.1. (http://ohwr.org/cernohl). This documentation is distributed
+0009   0000             ; WITHOUT ANY EXPRESS OR IMPLIED WARRANTY, INCLUDING OF MERCHANTABILITY,
+0010   0000             ; SATISFACTORY QUALITY AND FITNESS FOR A PARTICULAR PURPOSE.
+0011   0000             ; Please see the CERN OHL v.1.1 for applicable conditions
+0012   0000             
+0013   0000             	output	"driver.bin"
+0014   0000             
+0015   0000             ; Enderecos ROM
+0016   0000             
+0017   0000             BIOS_INITXT	= $6C						; Inicializa SCREEN0
+0018   0000             BIOS_CHPUT	= $A2						; A=char
+0019   0000             BIOS_CLS	= $C3						; Chamar com A=0
+0020   0000             LINL40		= $F3AE						; Width
+0021   0000             LINLEN		= $F3B0
+0022   0000             
+0023   0000             ; Enderecos SPI
+0024   0000             
+0025   0000             CHAVEIASPI	= $6001
+0026   0000             PORTCFG		= $4800
+0027   0000             PORTSPI		= $4000
+0028   0000             
+0029   0000             ; Comandos SPI:
+0030   0000             CMD0	= 0  | $40
+0031   0000             CMD1	= 1  | $40
+0032   0000             CMD8	= 8  | $40
+0033   0000             CMD9	= 9  | $40
+0034   0000             CMD10	= 10 | $40
+0035   0000             CMD12	= 12 | $40
+0036   0000             CMD16	= 16 | $40
+0037   0000             CMD17	= 17 | $40
+0038   0000             CMD18	= 18 | $40
+0039   0000             CMD24	= 24 | $40
+0040   0000             CMD25	= 25 | $40
+0041   0000             CMD55	= 55 | $40
+0042   0000             CMD58	= 58 | $40
+0043   0000             ACMD23	= 23 | $40
+0044   0000             ACMD41	= 41 | $40
+0045   0000             
+0046   0000             ; Offsets da area de trabalho
+0047   0000             
+0048   0000             BCSD 		= 0
+0049   0000             BCID1		= 16
+0050   0000             BCID2		= 32
+0051   0000             NUMSD		= 48			; 1 se cartao 1, 2 se cartao 2
+0052   0000             FLAGSCARTAO	= 49			; Flag indicando se houve mudanca ou erro de cartao
+0053   0000             NUMBLOCOS	= 50			; 1 byte
+0054   0000             TEMP		= 52			; 1 byte
+0055   0000             BLOCOS1		= 56			; 3 bytes
+0056   0000             BLOCOS2		= 60			; 3 bytes
+0057   0000             
+0058   0000             	org		$4000
+0059   4000             
+0060   4000 FF          	ds		256, $FF		; 256 dummy bytes
+0061   4100             
+0062   4100             DRV_START: 
+0063   4100             
+0064   4100             ;-----------------------------------------------------------------------------
+0065   4100             ;
+0066   4100             ; Miscellaneous constants
+0067   4100             ;
+0068   4100             
+0069   4100             ;This is a 2 byte buffer to store the address of code to be executed.
+0070   4100             ;It is used by some of the kernel page 0 routines.
+0071   4100             
+0072   4100             CODE_ADD: 	equ	0F84Ch
+0073   4100             
+0074   4100             
+0075   4100             ;-----------------------------------------------------------------------------
+0076   4100             ;
+0077   4100             ; Driver configuration constants
+0078   4100             ;
+0079   4100             
+0080   4100             ;Driver version
+0081   4100             
+0082   4100             VER_MAIN	equ	1
+0083   4100             VER_SEC		equ	0
+0084   4100             VER_REV		equ	4
+0085   4100             
+0086   4100             
+0087   4100             ;-----------------------------------------------------------------------------
+0088   4100             ;
+0089   4100             ; Error codes for DEV_RW
+0090   4100             ;
+0091   4100             
+0092   4100             ENCOMP	equ	0FFh
+0093   4100             EWRERR	equ	0FEh
+0094   4100             EDISK	equ	0FDh
+0095   4100             ENRDY	equ	0FCh
+0096   4100             EDATA	equ	0FAh
+0097   4100             ERNF	equ	0F9h
+0098   4100             EWPROT	equ	0F8h
+0099   4100             EUFORM	equ	0F7h
+0100   4100             ESEEK	equ	0F3h
+0101   4100             EIFORM	equ	0F0h
+0102   4100             EIDEVL	equ	0B5h
+0103   4100             EIPARM	equ	08Bh
+0104   4100             
+0105   4100             ;-----------------------------------------------------------------------------
+0106   4100             ;
+0107   4100             ; Routines and information available on kernel page 0
+0108   4100             ;
+0109   4100             
+0110   4100             ;* Get in A the current slot for page 1. Corrupts F.
+0111   4100             ;  Must be called by using CALBNK to bank 0:
+0112   4100             ;    xor a
+0113   4100             ;    ld ix,GSLOT1
+0114   4100             ;    call CALBNK
+0115   4100             
+0116   4100             GSLOT1	equ	402Dh
+0117   4100             
+0118   4100             
+0119   4100             ;* This routine reads a byte from another bank.
+0120   4100             ;  Must be called by using CALBNK to the desired bank,
+0121   4100             ;  passing the address to be read in HL:
+0122   4100             ;    ld a,<bank number>
+0123   4100             ;    ld hl,<byte address>
+0124   4100             ;    ld ix,RDBANK
+0125   4100             ;    call CALBNK
+0126   4100             
+0127   4100             RDBANK	equ	403Ch
+0128   4100             
+0129   4100             
+0130   4100             ;* This routine temporarily switches kernel main bank
+0131   4100             ;  (usually bank 0, but will be 3 when running in MSX-DOS 1 mode),
+0132   4100             ;  then invokes the routine whose address is at (CODE_ADD).
+0133   4100             ;  It is necessary to use this routine to invoke CALBAS
+0134   4100             ;  (so that kernel bank is correct in case of BASIC error)
+0135   4100             ;  and to invoke DOS functions via F37Dh hook.
+0136   4100             ;
+0137   4100             ;  Input:  Address of code to invoke in (CODE_ADD).
+0138   4100             ;          AF, BC, DE, HL, IX, IY passed to the called routine.
+0139   4100             ;  Output: AF, BC, DE, HL, IX, IY returned from the called routine.
+0140   4100             
+0141   4100             CALLB0	equ	403Fh
+0142   4100             
+0143   4100             
+0144   4100             ;* Call a routine in another bank.
+0145   4100             ;  Must be used if the driver spawns across more than one bank.
+0146   4100             ;
+0147   4100             ;  Input:  A = bank number
+0148   4100             ;          IX = routine address
+0149   4100             ;          AF' = AF for the routine
+0150   4100             ;          HL' = Ix for the routine
+0151   4100             ;          BC, DE, HL, IY = input for the routine
+0152   4100             ;  Output: AF, BC, DE, HL, IX, IY returned from the called routine.
+0153   4100             
+0154   4100             CALBNK	equ	4042h
+0155   4100             
+0156   4100             
+0157   4100             ;* Get in IX the address of the SLTWRK entry for the slot passed in A,
+0158   4100             ;  which will in turn contain a pointer to the allocated page 3
+0159   4100             ;  work area for that slot (0 if no work area was allocated).
+0160   4100             ;  If A=0, then it uses the slot currently switched in page 1.
+0161   4100             ;  Returns A=current slot for page 1, if A=0 was passed.
+0162   4100             ;  Corrupts F.
+0163   4100             ;  Must be called by using CALBNK to bank 0:
+0164   4100             ;    ld a,<slot number> (xor a for current page 1 slot)
+0165   4100             ;    ex af,af'
+0166   4100             ;    xor a
+0167   4100             ;    ld ix,GWORK
+0168   4100             ;    call CALBNK
+0169   4100             
+0170   4100             GWORK	equ	4045h
+0171   4100             
+0172   4100             
+0173   4100             ;* This address contains one byte that tells how many banks
+0174   4100             ;  form the Nextor kernel (or alternatively, the first bank
+0175   4100             ;  number of the driver).
+0176   4100             
+0177   4100             K_SIZE	equ	40FEh
+0178   4100             
+0179   4100             
+0180   4100             ;* This address contains one byte with the current bank number.
+0181   4100             
+0182   4100             CUR_BANK	equ	40FFh
+0183   4100             
+0184   4100             
+0185   4100             ;-----------------------------------------------------------------------------
+0186   4100             ;
+0187   4100             ; Built-in format choice strings
+0188   4100             ;
+0189   4100             
+0190   4100             NULL_MSG  equ     781Fh	;Null string (disk can't be formatted)
+0191   4100             SING_DBL  equ     7820h ;"1-Single side / 2-Double side"
+0192   4100             
+0193   4100             
+0194   4100             ;-----------------------------------------------------------------------------
+0195   4100             ;
+0196   4100             ; Driver signature
+0197   4100             ;
+0198   4100             	db	"NEXTOR_DRIVER",0
+0198   4100 4E4558544F525F44524956455200
+0199   410E             
+0200   410E             
+0201   410E             ;-----------------------------------------------------------------------------
+0202   410E             ;
+0203   410E             ; Driver flags:
+0204   410E             ;    bit 0: 0 for drive-based, 1 for device-based
+0205   410E 01          	db	1
+0206   410F             
+0207   410F             ;-----------------------------------------------------------------------------
+0208   410F             ;
+0209   410F             ; Reserved byte
+0210   410F             ;
+0211   410F             
+0212   410F 00          	db	0
+0213   4110             
+0214   4110             
+0215   4110             ;-----------------------------------------------------------------------------
+0216   4110             ;
+0217   4110             ; Driver name
+0218   4110             ;
+0219   4110             
+0220   4110             DRV_NAME: 
+0221   4110             	db	"SDMapper Driver"
+0221   4110 53444D617070657220447269766572
+0222   411F 20          	ds	32-($-DRV_NAME)," "
+0223   4130             
+0224   4130             
+0225   4130             ;-----------------------------------------------------------------------------
+0226   4130             ;
+0227   4130             ; Jump table for the driver public routines
+0228   4130             ;
+0229   4130             
+0230   4130             	; These routines are mandatory for all drivers
+0231   4130                     ; (but probably you need to implement only DRV_INIT)
+0232   4130             
+0233   4130 C3 6C 41    	jp	DRV_TIMI
+0234   4133 C3 D2 48    	jp	DRV_VERSION
+0235   4136 C3 00 48    	jp	DRV_INIT
+0236   4139 C3 D9 48    	jp	DRV_BASSTAT
+0237   413C C3 DB 48    	jp	DRV_BASDEV
+0238   413F C3 DD 48    	jp	DRV_EXTBIO
+0239   4142 C3 DE 48    	jp	DRV_DIRECT0
+0240   4145 C3 DE 48    	jp	DRV_DIRECT1
+0241   4148 C3 DE 48    	jp	DRV_DIRECT2
+0242   414B C3 DE 48    	jp	DRV_DIRECT3
+0243   414E C3 DE 48    	jp	DRV_DIRECT4
+0244   4151             
+0245   4151 00          	ds	15
+0246   4160             
+0247   4160             	; These routines are mandatory for device-based drivers
+0248   4160             
+0249   4160 C3 DF 48    	jp	DEV_RW
+0250   4163 C3 5C 49    	jp	DEV_INFO
+0251   4166 C3 E2 49    	jp	DEV_STATUS
+0252   4169 C3 28 4A    	jp	LUN_INFO
+0253   416C             
+0254   416C             
+0255   416C             ;=====
+0256   416C             ;=====  END of data that must be at fixed addresses
+0257   416C             ;=====
+0258   416C             
+0259   416C             
+0260   416C             ;-----------------------------------------------------------------------------
+0261   416C             ;
+0262   416C             ; Timer interrupt routine, it will be called on each timer interrupt
+0263   416C             ; (at 50 or 60Hz), but only if DRV_INIT returns Cy=1 on its first execution.
+0264   416C             
+0265   416C             DRV_TIMI: 
+0266   416C C9          	ret
+0267   416D             
+0268   416D             
+0269   416D             ; pula regiao da porta SPI
+0270   416D             
+0271   416D FF          	ds	$4800-$, $FF
+0272   4800             
+0273   4800             
+0274   4800             ;-----------------------------------------------------------------------------
+0275   4800             ;
+0276   4800             ; Driver initialization routine, it is called twice:
+0277   4800             ;
+0278   4800             ; 1) First execution, for information gathering.
+0279   4800             ;    Input:
+0280   4800             ;      A = 0
+0281   4800             ;      B = number of available drives
+0282   4800             ;      HL = maximum size of allocatable work area in page 3
+0283   4800             ;    Output:
+0284   4800             ;      A = number of required drives (for drive-based driver only)
+0285   4800             ;      HL = size of required work area in page 3
+0286   4800             ;      Cy = 1 if DRV_TIMI must be hooked to the timer interrupt, 0 otherwise
+0287   4800             ;
+0288   4800             ; 2) Second execution, for work area and hardware initialization.
+0289   4800             ;    Input:
+0290   4800             ;      A = 1
+0291   4800             ;      B = number of allocated drives for this controller
+0292   4800             ;
+0293   4800             ;    The work area address can be obtained by using GWORK.
+0294   4800             ;
+0295   4800             ;    If first execution requests more work area than available,
+0296   4800             ;    second execution will not be done and DRV_TIMI will not be hooked
+0297   4800             ;    to the timer interrupt.
+0298   4800             ;
+0299   4800             ;    If first execution requests more drives than available,
+0300   4800             ;    as many drives as possible will be allocated, and the initialization
+0301   4800             ;    procedure will continue the normal way
+0302   4800             ;    (for drive-based drivers only. Device-based drivers always
+0303   4800             ;     get two allocated drives.)
+0304   4800             
+0305   4800             DRV_INIT: 
+0306   4800 B7          	or		a							; testar se eh primeira ou segunda chamada
+0307   4801 CA CD 48    	jp		z, .primeira_chamada
+0308   4804             
+0309   4804             ; 2. chamada:
+0310   4804 CD 6C 00    	call	BIOS_INITXT					; inicializar tela
+0311   4807 AF          	xor		a
+0312   4808 CD C3 00    	call	BIOS_CLS					; limpar tela
+0313   480B CD 67 4A    	call	pegaWorkArea
+0314   480E 11 4D 5F    	ld		de, strTitulo				; imprimir titulo
+0315   4811 CD 07 5E    	call	printString
+0316   4814 11 19 60    	ld		de, strMr_mp_desativada
+0317   4817 CD F7 5D    	call	modoSPI
+0318   481A 3A 00 48    	ld		a, (PORTCFG)				; testar se mapper/megaram esta ativa
+0319   481D E6 10       	and		$10
+0320   481F 28 0D       	jr		z, .print					; desativada, pula
+0321   4821 11 35 60    	ld		de, strMapper
+0322   4824 3A 00 48    	ld		a, (PORTCFG)				; ativa, testar se eh mapper ou megaram
+0323   4827 E6 20       	and		$20
+0324   4829 20 03       	jr		nz, .print
+0325   482B 11 46 60    	ld		de, strMegaram				; Megaram ativa
+0326   482E             .print: 
+0327   482E CD 07 5E    	call	printString
+0328   4831 11 F4 5F    	ld		de, strCrLf
+0329   4834 CD 07 5E    	call	printString
+0330   4837 AF          	xor		a							; zera flags do cartao
+0331   4838 FD 77 31    	ld		(iy+FLAGSCARTAO), a
+0332   483B 3E 01       	ld		a, 1						; detectar cartao 1
+0333   483D CD 57 48    	call	.detecta
+0334   4840 3E 02       	ld		a, 2						; detectar cartao 2
+0335   4842 CD 57 48    	call	.detecta
+0336   4845 01 00 00    	ld		bc, 0
+0337   4848 1E 05       	ld		e, 5
+0338   484A CD FF 5D    	call	modoROM
+0339   484D             .wait: 									; esperar um pouco para dar tempo
+0340   484D 00          	nop									; de ler mensagens
+0341   484E 0B          	dec		bc
+0342   484F 79          	ld		a, c
+0343   4850 B0          	or		b
+0344   4851 20 FA       	jr		nz, .wait
+0345   4853 1D          	dec		e
+0346   4854 20 F7       	jr		nz, .wait
+0347   4856 C9          	ret
+0348   4857             
+0349   4857             .detecta: 
+0350   4857 FD 77 30    	ld		(iy+NUMSD), a				; processo de deteccao dos cartoes
+0351   485A 11 F7 5F    	ld		de, strCartao
+0352   485D CD 07 5E    	call	printString
+0353   4860 FD 7E 30    	ld		a, (iy+NUMSD)
+0354   4863 C6 30       	add		'0'
+0355   4865 CD A2 00    	call	BIOS_CHPUT
+0356   4868 3E 3A       	ld		a, ':'
+0357   486A CD A2 00    	call	BIOS_CHPUT
+0358   486D 3E 20       	ld		a, ' '
+0359   486F CD A2 00    	call	BIOS_CHPUT
+0360   4872 FD 4E 30    	ld		c, (iy+NUMSD)
+0361   4875 3A 00 48    	ld		a, (PORTCFG)				; testar se cartao esta inserido
+0362   4878 A1          	and		c							; C contem 1 se cartao 1, 2 se cartao 2
+0363   4879 28 09       	jr		z, .naoVazio
+0364   487B 11 FD 5F    	ld		de, strVazio				; nao tem cartao no slot
+0365   487E CD 07 5E    	call	printString
+0366   4881 C3 92 48    	jp		.marcaErro
+0367   4884             .naoVazio: 
+0368   4884 CD ED 4A    	call	detectaCartao				; tem cartao no slot, inicializar e detectar
+0369   4887 30 0C       	jr		nc, .detectou
+0370   4889 CD 3E 4C    	call	desabilitaSDs
+0371   488C 11 05 60    	ld		de, strNaoIdentificado
+0372   488F CD 07 5E    	call	printString
+0373   4892             .marcaErro: 
+0374   4892 C3 A8 4A    	jp		marcaErroCartao				; slot vazio ou erro de deteccao, marcar nas flags
+0375   4895             .detectou: 
+0376   4895 CD C5 4A    	call	calculaCIDoffset			; calculamos em IX a posicao correta do offset CID dependendo do cartao atual
+0377   4898 DD 7E 0F    	ld		a, (ix+15)					; pegar byte SDV1 ou SDV2
+0378   489B 11 58 60    	ld		de, strSDV1					; e imprimir
+0379   489E B7          	or		a
+0380   489F 28 03       	jr		z, .pula1
+0381   48A1 11 60 60    	ld		de, strSDV2
+0382   48A4             .pula1: 
+0383   48A4 CD 07 5E    	call	printString
+0384   48A7 3E 28       	ld		a, '('
+0385   48A9 CD A2 00    	call	BIOS_CHPUT
+0386   48AC DD 7E 00    	ld		a, (ix)						; pegar byte do fabricante
+0387   48AF CD 54 5E    	call	printDecToAscii				; Imprimir Manufacturer ID
+0388   48B2 3E 29       	ld		a, ')'
+0389   48B4 CD A2 00    	call	BIOS_CHPUT
+0390   48B7 3E 20       	ld		a, ' '
+0391   48B9 CD A2 00    	call	BIOS_CHPUT
+0392   48BC DD 7E 00    	ld		a, (ix)						; pegar byte do fabricante
+0393   48BF CD 80 5E    	call	pegaFabricante				; achar nome do fabricante
+0394   48C2 EB          	ex		de, hl
+0395   48C3 CD 07 5E    	call	printString					; e imprimir
+0396   48C6 11 F4 5F    	ld		de, strCrLf
+0397   48C9 CD 07 5E    	call	printString
+0398   48CC C9          	ret
+0399   48CD             
+0400   48CD             .primeira_chamada: 
+0401   48CD AF          	xor		a							; primeira chamada do Nextor
+0402   48CE 21 40 00    	ld		hl, 64						; informar que precisamos de 64 bytes
+0403   48D1 C9          	ret									; de RAM para dados
+0404   48D2             
+0405   48D2             ;-----------------------------------------------------------------------------
+0406   48D2             ;
+0407   48D2             ; Obtain driver version
+0408   48D2             ;
+0409   48D2             ; Input:  -
+0410   48D2             ; Output: A = Main version number
+0411   48D2             ;         B = Secondary version number
+0412   48D2             ;         C = Revision number
+0413   48D2             
+0414   48D2             DRV_VERSION: 
+0415   48D2 3E 01       	ld	a,VER_MAIN
+0416   48D4 06 00       	ld	b,VER_SEC
+0417   48D6 0E 04       	ld	c,VER_REV
+0418   48D8 C9          	ret
+0419   48D9             
+0420   48D9             
+0421   48D9             ;-----------------------------------------------------------------------------
+0422   48D9             ;
+0423   48D9             ; BASIC expanded statement ("CALL") handler.
+0424   48D9             ; Works the expected way, except that if invoking CALBAS is needed,
+0425   48D9             ; it must be done via the CALLB0 routine in kernel page 0.
+0426   48D9             
+0427   48D9             DRV_BASSTAT: 
+0428   48D9 37          	scf
+0429   48DA C9          	ret
+0430   48DB             
+0431   48DB             
+0432   48DB             ;-----------------------------------------------------------------------------
+0433   48DB             ;
+0434   48DB             ; BASIC expanded device handler.
+0435   48DB             ; Works the expected way, except that if invoking CALBAS is needed,
+0436   48DB             ; it must be done via the CALLB0 routine in kernel page 0.
+0437   48DB             
+0438   48DB             DRV_BASDEV: 
+0439   48DB 37          	scf
+0440   48DC C9          	ret
+0441   48DD             
+0442   48DD             
+0443   48DD             ;-----------------------------------------------------------------------------
+0444   48DD             ;
+0445   48DD             ; Extended BIOS hook.
+0446   48DD             ; Works the expected way, except that it must return
+0447   48DD             ; D'=1 if the old hook must be called, D'=0 otherwise.
+0448   48DD             ; It is entered with D'=1.
+0449   48DD             
+0450   48DD             DRV_EXTBIO: 
+0451   48DD C9          	ret
+0452   48DE             
+0453   48DE             
+0454   48DE             ;-----------------------------------------------------------------------------
+0455   48DE             ;
+0456   48DE             ; Direct calls entry points.
+0457   48DE             ; Calls to addresses 7850h, 7853h, 7856h, 7859h and 785Ch
+0458   48DE             ; in kernel banks 0 and 3 will be redirected
+0459   48DE             ; to DIRECT0/1/2/3/4 respectively.
+0460   48DE             ; Receives all register data from the caller except IX and AF'.
+0461   48DE             
+0462   48DE             DRV_DIRECT0: 
+0463   48DE             DRV_DIRECT1: 
+0464   48DE             DRV_DIRECT2: 
+0465   48DE             DRV_DIRECT3: 
+0466   48DE             DRV_DIRECT4: 
+0467   48DE C9          	ret
+0468   48DF             
+0469   48DF             
+0470   48DF             ;=====
+0471   48DF             ;=====  BEGIN of DEVICE-BASED specific routines
+0472   48DF             ;=====
+0473   48DF             
+0474   48DF             ;-----------------------------------------------------------------------------
+0475   48DF             ;
+0476   48DF             ; Read or write logical sectors from/to a logical unit
+0477   48DF             ;
+0478   48DF             ;Input:    Cy=0 to read, 1 to write
+0479   48DF             ;          A = Device number, 1 to 7
+0480   48DF             ;          B = Number of sectors to read or write
+0481   48DF             ;          C = Logical unit number, 1 to 7
+0482   48DF             ;          HL = Source or destination memory address for the transfer
+0483   48DF             ;          DE = Address where the 4 byte sector number is stored.
+0484   48DF             ;Output:   A = Error code (the same codes of MSX-DOS are used):
+0485   48DF             ;              0: Ok
+0486   48DF             ;              .IDEVL: Invalid device or LUN
+0487   48DF             ;              .NRDY: Not ready
+0488   48DF             ;              .DISK: General unknown disk error
+0489   48DF             ;              .DATA: CRC error when reading
+0490   48DF             ;              .RNF: Sector not found
+0491   48DF             ;              .UFORM: Unformatted disk
+0492   48DF             ;              .WPROT: Write protected media, or read-only logical unit
+0493   48DF             ;              .WRERR: Write error
+0494   48DF             ;              .NCOMP: Incompatible disk.
+0495   48DF             ;              .SEEK: Seek error.
+0496   48DF             ;          B = Number of sectors actually read (in case of error only)
+0497   48DF             
+0498   48DF             DEV_RW: 
+0499   48DF F5          	push	af
+0500   48E1 BF FE 03    	cp		a, 3						; somente 2 dispositivos
+0501   48E3 30 10       	jr		nc, .saicomerroidl
+0502   48E5 0D          	dec		c							; somente 1 logical unit
+0503   48E6 20 0D       	jr		nz, .saicomerroidl
+0504   48E8 E5          	push	hl
+0505   48E9 CD 80 4A    	call	testaCartao					; verificar se cartao esta OK
+0506   48EC E1          	pop		hl
+0507   48ED 30 0C       	jr		nc, .ok
+0508   48EF F1          	pop		af							; retira AF guardado no inicio
+0509   48F0 3E FC       	ld		a, ENRDY					; Not ready
+0510   48F2             ;	ld		a, EDISK					; General unknown disk error
+0511   48F2 06 00       	ld		b, 0
+0512   48F4 C9          	ret
+0513   48F5             .saicomerroidl: 
+0514   48F5 F1          	pop		af							; retira AF guardado no inicio
+0515   48F6 3E B5       	ld		a, EIDEVL					; informar erro
+0516   48F8 06 00       	ld		b, 0
+0517   48FA C9          	ret
+0518   48FB             .ok: 
+0519   48FB FD 70 32    	ld		(iy+NUMBLOCOS), b			; guarda numero de blocos para ler/gravar
+0520   48FE E5          	push	hl
+0521   48FF D5          	push	de
+0522   4900 CD C5 4A    	call	calculaCIDoffset			; calculamos em IX a posicao correta do offset CID dependendo do cartao atual
+0523   4903 D1          	pop		de
+0524   4904 E1          	pop		hl
+0525   4905 F1          	pop		af							; retira AF guardado no inicio, para saber se eh leitura ou escrita
+0526   4906 38 25       	jr		c, escrita					; se for escrita pulamos
+0527   4908             leitura: 
+0528   4908 1A          	ld		a, (de)						; 1. n. bloco
+0529   4909 F5          	push	af
+0530   490A 13          	inc		de
+0531   490B 1A          	ld		a, (de)						; 2. n. bloco
+0532   490C F5          	push	af
+0533   490D 13          	inc		de
+0534   490E 1A          	ld		a, (de)						; 3. n. bloco
+0535   490F 4F          	ld		c, a
+0536   4910 13          	inc		de
+0537   4911 1A          	ld		a, (de)						; 4. n. bloco
+0538   4912 13          	inc		de
+0539   4913 47          	ld		b, a
+0540   4914 F1          	pop		af
+0541   4915 57          	ld		d, a
+0542   4916 F1          	pop		af							; HL = ponteiro destino
+0543   4917 5F          	ld		e, a						; BC DE = 32 bits numero do bloco
+0544   4918 CD F7 5D    	call	modoSPI
+0545   491B CD 8C 55    	call	LerBloco					; chamar rotina de leitura de dados
+0546   491E CD FF 5D    	call	modoROM
+0547   4921 30 08       	jr		nc, .ok
+0548   4923 CD A8 4A    	call	marcaErroCartao				; ocorreu erro na leitura, marcar erro
+0549   4926             ;	ld		a, ENRDY					; Not ready
+0550   4926 3E FD       	ld		a, EDISK					; General unknown disk error
+0551   4928 06 00       	ld		b, 0						; informar que lemos 0 blocos
+0552   492A C9          	ret
+0553   492B             .ok: 
+0554   492B AF          	xor		a							; tudo OK, informar ao Nextor
+0555   492C C9          	ret
+0556   492D             
+0557   492D             escrita: 
+0558   492D CD B3 4A    	call	testaWP						; testar se cartao esta protegido contra escrita
+0559   4930 28 05       	jr		z, .ok
+0560   4932 3E F8       	ld		a, EWPROT					; disco protegido
+0561   4934 06 00       	ld		b, 0
+0562   4936 C9          	ret
+0563   4937             .ok: 
+0564   4937 1A          	ld		a, (de)						; 1. n. bloco
+0565   4938 F5          	push	af
+0566   4939 13          	inc		de
+0567   493A 1A          	ld		a, (de)						; 2. n. bloco
+0568   493B F5          	push	af
+0569   493C 13          	inc		de
+0570   493D 1A          	ld		a, (de)						; 3. n. bloco
+0571   493E 13          	inc		de
+0572   493F 4F          	ld		c, a
+0573   4940 1A          	ld		a, (de)						; 4. n. bloco
+0574   4941 13          	inc		de
+0575   4942 47          	ld		b, a
+0576   4943 F1          	pop		af
+0577   4944 57          	ld		d, a
+0578   4945 F1          	pop		af							; HL = ponteiro destino
+0579   4946 5F          	ld		e, a						; BC DE = 32 bits numero do bloco
+0580   4947 CD F7 5D    	call	modoSPI
+0581   494A CD E4 4C    	call	GravarBloco					; chamar rotina de gravacao de dados
+0582   494D CD FF 5D    	call	modoROM
+0583   4950 30 08       	jr		nc, .ok2
+0584   4952 CD A8 4A    	call	marcaErroCartao				; ocorreu erro, marcar nas flags
+0585   4955 3E FE       	ld		a, EWRERR					; Write error
+0586   4957 06 00       	ld		b, 0
+0587   4959 C9          	ret
+0588   495A             .ok2: 
+0589   495A AF          	xor		a							; gravacao sem erros!
+0590   495B C9          	ret
+0591   495C             
+0592   495C             ;-----------------------------------------------------------------------------
+0593   495C             ;
+0594   495C             ; Device information gathering
+0595   495C             ;
+0596   495C             ;Input:   A = Device index, 1 to 7
+0597   495C             ;         B = Information to return:
+0598   495C             ;             0: Basic information
+0599   495C             ;             1: Manufacturer name string
+0600   495C             ;             2: Device name string
+0601   495C             ;             3: Serial number string
+0602   495C             ;         HL = Pointer to a buffer in RAM
+0603   495C             ;Output:  A = Error code:
+0604   495C             ;             0: Ok
+0605   495C             ;             1: Device not available or invalid device index
+0606   495C             ;             2: Information not available, or invalid information index
+0607   495C             ;         When basic information is requested,
+0608   495C             ;         buffer filled with the following information:
+0609   495C             ;
+0610   495C             ;+0 (1): Numer of logical units, from 1 to 7. 1 if the device has no logical
+0611   495C             ;        units (which is functionally equivalent to having only one).
+0612   495C             ;+1 (1): Device flags, always zero in Beta 2.
+0613   495C             ;
+0614   495C             ; The strings must be printable ASCII string (ASCII codes 32 to 126),
+0615   495C             ; left justified and padded with spaces. All the strings are optional,
+0616   495C             ; if not available, an error must be returned.
+0617   495C             ; If a string is provided by the device in binary format, it must be reported
+0618   495C             ; as an hexadecimal, upper-cased string, preceded by the prefix "0x".
+0619   495C             ; The maximum length for a string is 64 characters;
+0620   495C             ; if the string is actually longer, the leftmost 64 characters
+0621   495C             ; should be provided.
+0622   495C             ;
+0623   495C             ; In the case of the serial number string, the same rules for the strings
+0624   495C             ; apply, except that it must be provided right-justified,
+0625   495C             ; and if it is too long, the rightmost characters must be
+0626   495C             ; provided, not the leftmost.
+0627   495C             
+0628   495C             DEV_INFO: 
+0629   495C 04          	inc		b
+0630   495E BF FE 03    	cp		a, 3						; somente 2 dispositivos
+0631   4960 30 07       	jr		nc, .saicomerro
+0632   4962 E5          	push	hl
+0633   4963 CD 80 4A    	call	testaCartao					; verificar se cartao esta OK
+0634   4966 E1          	pop		hl
+0635   4967 30 03       	jr		nc, .ok						; nao houve erro
+0636   4969             .saicomerro: 
+0637   4969 3E 01       	ld		a, 1						; informar erro
+0638   496B C9          	ret
+0639   496C             
+0640   496C             .ok: 
+0641   496C 10 07       	djnz	.naoBasic
+0642   496E             ; Basic information:
+0643   496E 3E 01       	ld		a, 1						; 1 logical unit somente
+0644   4970 77          	ld		(hl), a
+0645   4971 AF          	xor		a							; reservado, deve ser 0
+0646   4972 23          	inc		hl
+0647   4973 77          	ld		(hl), a
+0648   4974 C9          	ret									; retorna com A=0 (OK)
+0649   4975             
+0650   4975             .naoBasic: 
+0651   4975 E5          	push	hl
+0652   4976 CD C5 4A    	call	calculaCIDoffset			; calculamos em IX a posicao correta do offset CID dependendo do cartao atual
+0653   4979 E1          	pop		hl
+0654   497A 10 25       	djnz	.naoManuf
+0655   497C             ; Manufacturer Name:
+0656   497C E5          	push	hl							; salva ponteiro do buffer
+0657   497D 06 40       	ld		b, 64						; preenche buffer com espaco
+0658   497F 3E 20       	ld		a, ' '
+0659   4981             .loop1: 
+0660   4981 77          	ld		(hl), a
+0661   4982 23          	inc		hl
+0662   4983 10 FC       	djnz	.loop1
+0663   4985 D1          	pop		de							; recuperamos ponteiro do buffer em DE
+0664   4986 3E 28       	ld		a, '('						; colocamos (xx) xxx no buffer
+0665   4988 12          	ld		(de), a
+0666   4989 13          	inc		de
+0667   498A DD 7E 00    	ld		a, (ix)						; byte do fabricante
+0668   498D CD 10 5E    	call	DecToAscii
+0669   4990 3E 29       	ld		a, ')'
+0670   4992 12          	ld		(de), a
+0671   4993 13          	inc		de
+0672   4994 3E 20       	ld		a, ' '
+0673   4996 12          	ld		(de), a
+0674   4997 13          	inc		de
+0675   4998 DD 7E 00    	ld		a, (ix)						; byte do fabricante
+0676   499B CD 80 5E    	call	pegaFabricante				; pegar nome do fabricante em HL
+0677   499E ED B0       	ldir								; e colocar no buffer
+0678   49A0 C9          	ret
+0679   49A1             
+0680   49A1             .naoManuf: 
+0681   49A1 10 1A       	djnz	.naoProduct
+0682   49A3             ; Product Name:
+0683   49A3 E5          	push	hl							; guarda HL que aponta para buffer do Nextor
+0684   49A4 DD E5       	push	ix
+0685   49A6 E1          	pop		hl							; joga IX para HL
+0686   49A7 16 00       	ld		d, 0
+0687   49A9 1E 03       	ld		e, 3						; adiciona offset do productname em HL
+0688   49AB 19          	add		hl, de
+0689   49AC D1          	pop		de							; recupera buffer do Nextor em DE
+0690   49AD 01 05 00    	ld		bc, 5						; 5 caracteres
+0691   49B0 ED B0       	ldir								; copia nome do produto
+0692   49B2 EB          	ex		de, hl						; troca DE com HL, agora HL aponta para Buffer do nextor atualizado
+0693   49B3 06 3B       	ld		b, 59						; Coloca espaco no restante do buffer
+0694   49B5 3E 20       	ld		a, ' '
+0695   49B7             .loop2: 
+0696   49B7 77          	ld		(hl), a
+0697   49B8 23          	inc		hl
+0698   49B9 10 FC       	djnz	.loop2
+0699   49BB AF          	xor		a							; informar sem erros
+0700   49BC C9          	ret
+0701   49BD             
+0702   49BD             .naoProduct: 
+0703   49BD             ; Serial:
+0704   49BD 3E 30       	ld		a, '0'						; Coloca prefixo "0x"
+0705   49BF 77          	ld		(hl), a
+0706   49C0 23          	inc		hl
+0707   49C1 3E 78       	ld		a, 'x'
+0708   49C3 77          	ld		(hl), a
+0709   49C4 23          	inc		hl
+0710   49C5 E5          	push	hl							; guarda HL que aponta para buffer do Nextor
+0711   49C6 DD E5       	push	ix
+0712   49C8 E1          	pop		hl							; joga IX para HL
+0713   49C9 16 00       	ld		d, 0
+0714   49CB 1E 09       	ld		e, 9						; adiciona offset do productname em HL
+0715   49CD 19          	add		hl, de
+0716   49CE D1          	pop		de							; recupera buffer do nextor em DE
+0717   49CF 06 04       	ld		b, 4						; 4 bytes do serial
+0718   49D1             .loop3: 
+0719   49D1 7E          	ld		a, (hl)
+0720   49D2 CD 40 5E    	call	HexToAscii					; converter HEXA para ASCII
+0721   49D5 23          	inc		hl
+0722   49D6 10 F9       	djnz	.loop3
+0723   49D8 06 36       	ld		b, 54						; Coloca espaco no restante
+0724   49DA 3E 20       	ld		a, ' '
+0725   49DC             .loop4: 
+0726   49DC 12          	ld		(de), a
+0727   49DD 13          	inc		de
+0728   49DE 10 FC       	djnz	.loop4
+0729   49E0 AF          	xor		a							; informar sem erros
+0730   49E1 C9          	ret
+0731   49E2             
+0732   49E2             ;-----------------------------------------------------------------------------
+0733   49E2             ;
+0734   49E2             ; Obtain device status
+0735   49E2             ;
+0736   49E2             ;Input:   A = Device index, 1 to 7
+0737   49E2             ;         B = Logical unit number, 1 to 7
+0738   49E2             ;             0 to return the status of the device itself.
+0739   49E2             ;Output:  A = Status for the specified logical unit,
+0740   49E2             ;             or for the whole device if 0 was specified:
+0741   49E2             ;                0: The device or logical unit is not available, or the
+0742   49E2             ;                   device or logical unit number supplied is invalid.
+0743   49E2             ;                1: The device or logical unit is available and has not
+0744   49E2             ;                   changed since the last status request.
+0745   49E2             ;                2: The device or logical unit is available and has changed
+0746   49E2             ;                   since the last status request
+0747   49E2             ;                   (for devices, the device has been unplugged and a
+0748   49E2             ;                    different device has been plugged which has been
+0749   49E2             ;                    assigned the same device index; for logical units,
+0750   49E2             ;                    the media has been changed).
+0751   49E2             ;                3: The device or logical unit is available, but it is not
+0752   49E2             ;                   possible to determine whether it has been changed
+0753   49E2             ;                   or not since the last status request.
+0754   49E2             ;
+0755   49E2             ; Devices not supporting hot-plugging must always return status value 1.
+0756   49E2             ; Non removable logical units may return values 0 and 1.
+0757   49E2             ;
+0758   49E2             ; The returned status is always relative to the previous invokation of
+0759   49E2             ; DEV_STATUS itself. Please read the Driver Developer Guide for more info.
+0760   49E2             
+0761   49E2             DEV_STATUS: 
+0762   49E3 BF FE 03    	cp		a, 3						; 2 dispositivos somente
+0763   49E5 30 3E       	jr		nc, .saicomerro
+0764   49E7 05          	dec		b							; 1 logical unit somente
+0765   49E8 20 3B       	jr		nz, .saicomerro
+0766   49EA             
+0767   49EA F5          	push	af
+0768   49EB CD 67 4A    	call	pegaWorkArea
+0769   49EE F1          	pop		af
+0770   49EF FD 77 30    	ld		(iy+NUMSD), a				; salva numero do device atual (1 ou 2)
+0771   49F2 4F          	ld		c, a
+0772   49F3 CD F7 5D    	call	modoSPI
+0773   49F6 3A 00 48    	ld		a, (PORTCFG)				; testar se cartao esta inserido
+0774   49F9 CD FF 5D    	call	modoROM
+0775   49FC A1          	and		c							; C contem 1 se cartao 1, 2 se cartao 2
+0776   49FD 20 23       	jr		nz, .cartaoComErro			; se slot do cartao estiver vazio, marcamos o erro nas flags
+0777   49FF FD 7E 31    	ld		a, (iy+FLAGSCARTAO)			; testar bit de erro do cartao nas flags
+0778   4A02 A1          	and		c
+0779   4A03 28 1A       	jr		z, .semMudanca				; cartao nao marcado com erro, pula
+0780   4A05 CD F7 5D    	call	modoSPI
+0781   4A08 CD ED 4A    	call	detectaCartao				; erro na deteccao do cartao, tentar re-detectar
+0782   4A0B CD FF 5D    	call	modoROM
+0783   4A0E 38 12       	jr		c, .cartaoComErro			; nao conseguimos detectar, sai com erro
+0784   4A10 FD 7E 30    	ld		a, (iy+NUMSD)				; conseguimos detectar, tira erro nas flags
+0785   4A13 2F          	cpl									; inverte bits para fazer o AND
+0786   4A14 4F          	ld		c, a
+0787   4A15 FD 7E 31    	ld		a, (iy+FLAGSCARTAO)
+0788   4A18 A1          	and		c							; limpa bit
+0789   4A19 FD 77 31    	ld		(iy+FLAGSCARTAO), a
+0790   4A1C             .comMudanca: 
+0791   4A1C 3E 02       	ld		a, 2						; informa ao Nextor que cartao esta OK e mudou
+0792   4A1E C9          	ret
+0793   4A1F             .semMudanca: 
+0794   4A1F 3E 01       	ld		a, 1						; informa ao Nextor que cartao esta OK e nao mudou
+0795   4A21 C9          	ret
+0796   4A22             .cartaoComErro: 
+0797   4A22 CD A8 4A    	call	marcaErroCartao				; marcar erro do cartao nas flags
+0798   4A25             .saicomerro: 
+0799   4A25 3E 00       	ld		a, 0						; informa erro
+0800   4A27 C9          	ret
+0801   4A28             
+0802   4A28             ;-----------------------------------------------------------------------------
+0803   4A28             ;
+0804   4A28             ; Obtain logical unit information
+0805   4A28             ;
+0806   4A28             ;Input:   A  = Device index, 1 to 7
+0807   4A28             ;         B  = Logical unit number, 1 to 7
+0808   4A28             ;         HL = Pointer to buffer in RAM.
+0809   4A28             ;Output:  A = 0: Ok, buffer filled with information.
+0810   4A28             ;             1: Error, device or logical unit not available,
+0811   4A28             ;                or device index or logical unit number invalid.
+0812   4A28             ;         On success, buffer filled with the following information:
+0813   4A28             ;
+0814   4A28             ;+0 (1): Medium type:
+0815   4A28             ;        0: Block device
+0816   4A28             ;        1: CD or DVD reader or recorder
+0817   4A28             ;        2-254: Unused. Additional codes may be defined in the future.
+0818   4A28             ;        255: Other
+0819   4A28             ;+1 (2): Sector size, 0 if this information does not apply or is
+0820   4A28             ;        not available.
+0821   4A28             ;+3 (4): Total number of available sectors.
+0822   4A28             ;        0 if this information does not apply or is not available.
+0823   4A28             ;+7 (1): Flags:
+0824   4A28             ;        bit 0: 1 if the medium is removable.
+0825   4A28             ;        bit 1: 1 if the medium is read only. A medium that can dinamically
+0826   4A28             ;               be write protected or write enabled is not considered
+0827   4A28             ;               to be read-only.
+0828   4A28             ;        bit 2: 1 if the LUN is a floppy disk drive.
+0829   4A28             ;+8 (2): Number of cylinders
+0830   4A28             ;+10 (1): Number of heads
+0831   4A28             ;+11 (1): Number of sectors per track
+0832   4A28             ;
+0833   4A28             ; Number of cylinders, heads and sectors apply to hard disks only.
+0834   4A28             ; For other types of device, these fields must be zero.
+0835   4A28             
+0836   4A28             LUN_INFO: 
+0837   4A29 BF FE 03    	cp		a, 3						; somente 2 dispositivo
+0838   4A2B 30 0A       	jr		nc, .saicomerro
+0839   4A2D 05          	dec		b							; somente 1 logical unit
+0840   4A2E 20 07       	jr		nz, .saicomerro
+0841   4A30 E5          	push	hl
+0842   4A31 CD 80 4A    	call	testaCartao
+0843   4A34 E1          	pop		hl
+0844   4A35 30 03       	jr		nc, .ok						; nao tem erro com o cartao
+0845   4A37             .saicomerro: 
+0846   4A37 3E 01       	ld		a, 1						; informar erro
+0847   4A39 C9          	ret
+0848   4A3A             .ok: 
+0849   4A3A E5          	push	hl
+0850   4A3B CD D9 4A    	call	calculaBLOCOSoffset			; calcular em IX e HL o offset correto do buffer que armazena total de blocos
+0851   4A3E E1          	pop		hl							; do cartao dependendo do cartao atual solicitado
+0852   4A3F AF          	xor		a
+0853   4A40 77          	ld		(hl), a						; Informar que o dispositivo eh do tipo block device
+0854   4A41 23          	inc		hl
+0855   4A42 77          	ld		(hl), a						; tamanho de um bloco = 512 bytes (coloca $00, $02 que é $200 = 512)
+0856   4A43 23          	inc		hl
+0857   4A44 3E 02       	ld		a, 2
+0858   4A46 77          	ld		(hl), a
+0859   4A47 23          	inc		hl
+0860   4A48 DD 7E 00    	ld		a, (ix)						; copia numero de blocos total
+0861   4A4B 77          	ld		(hl), a
+0862   4A4C 23          	inc		hl
+0863   4A4D DD 7E 01    	ld		a, (ix+1)
+0864   4A50 77          	ld		(hl), a
+0865   4A51 23          	inc		hl
+0866   4A52 DD 7E 02    	ld		a, (ix+2)
+0867   4A55 77          	ld		(hl), a
+0868   4A56 23          	inc		hl
+0869   4A57 AF          	xor		a							; cartoes SD tem total de blocos em 24 bits, mas o Nextor pede numero de
+0870   4A58 77          	ld		(hl), a 					; 32 bits, entao coloca 0 no MSB
+0871   4A59 23          	inc		hl
+0872   4A5A 3E 01       	ld		a, 1						; flags: dispositivo R/W removivel
+0873   4A5C 77          	ld		(hl), a
+0874   4A5D 23          	inc		hl
+0875   4A5E AF          	xor		a							; CHS = 0
+0876   4A5F 77          	ld		(hl), a
+0877   4A60 23          	inc		hl
+0878   4A61 77          	ld		(hl), a
+0879   4A62 23          	inc		hl
+0880   4A63 77          	ld		(hl), a
+0881   4A64 23          	inc		hl
+0882   4A65 AF          	xor		a							; informar que dados foram preenchidos
+0883   4A66 C9          	ret
+0884   4A67             
+0885   4A67             ;=====
+0886   4A67             ;=====  END of DEVICE-BASED specific routines
+0887   4A67             ;=====
+0888   4A67             
+0889   4A67             ;------------------------------------------------
+0890   4A67             ; Rotinas auxiliares
+0891   4A67             ;------------------------------------------------
+0892   4A67             
+0893   4A67             ;------------------------------------------------
+0894   4A67             ; Pedir ao Nextor o ponteiro de dados de trabalho
+0895   4A67             ; na RAM e colocar em HL e IY
+0896   4A67             ; Destroi HL e IY
+0897   4A67             ;------------------------------------------------
+0898   4A67             pegaWorkArea: 
+0899   4A67 F5          	push	af
+0900   4A68 AF          	xor		a				; Pegar endereco da area de trabalho
+0901   4A69 08          	ex		af, af'
+0902   4A6A AF          	xor		a
+0903   4A6B DD 21 45 40 	ld		ix, GWORK
+0904   4A6F CD FF 5D    	call	modoROM
+0905   4A72 CD 42 40    	call	CALBNK
+0906   4A75 DD 6E 00    	ld		l, (ix)			; em HL tem o ponteiro da nossa area da RAM
+0907   4A78 DD 66 01    	ld		h, (ix+1)
+0908   4A7B E5          	push	hl
+0909   4A7C FD E1       	pop		iy				; em IY temos o mesmo ponteiro
+0910   4A7E F1          	pop		af
+0911   4A7F C9          	ret
+0912   4A80             
+0913   4A80             ;------------------------------------------------
+0914   4A80             ; Testa se cartao esta inserido e/ou houve erro
+0915   4A80             ; na ultima vez que foi acessado. Carry indica
+0916   4A80             ; erro
+0917   4A80             ; Destroi AF, HL, IX, C
+0918   4A80             ;------------------------------------------------
+0919   4A80             testaCartao: 
+0920   4A80 F5          	push	af
+0921   4A81 CD 67 4A    	call	pegaWorkArea
+0922   4A84 F1          	pop		af
+0923   4A85 FD 77 30    	ld		(iy+NUMSD), a				; salva numero do device atual (1 ou 2)
+0924   4A88 4F          	ld		c, a
+0925   4A89 CD F7 5D    	call	modoSPI
+0926   4A8C 3A 00 48    	ld		a, (PORTCFG)				; testar se cartao esta inserido
+0927   4A8F CD FF 5D    	call	modoROM
+0928   4A92 A1          	and		c							; C contem 1 se cartao 1, 2 se cartao 2
+0929   4A93 20 0A       	jr		nz, .saicomerro				
+0930   4A95 FD 7E 31    	ld		a, (iy+FLAGSCARTAO)			; testar bit de erro do cartao nas flags
+0931   4A98 A1          	and		c
+0932   4A99 28 02       	jr		z, .ok
+0933   4A9B 37          	scf									; indica erro
+0934   4A9C C9          	ret
+0935   4A9D             .ok: 
+0936   4A9D AF          	xor		a							; zera carry indicando sem erro
+0937   4A9E C9          	ret
+0938   4A9F             .saicomerro: 
+0939   4A9F FD 7E 31    	ld		a, (iy+FLAGSCARTAO)			; marca bit de erro nas flags
+0940   4AA2 B1          	or		c
+0941   4AA3 FD 77 31    	ld		(iy+FLAGSCARTAO), a
+0942   4AA6 37          	scf
+0943   4AA7 C9          	ret
+0944   4AA8             
+0945   4AA8             ;------------------------------------------------
+0946   4AA8             ; Marcar bit de erro nas flags
+0947   4AA8             ; Destroi AF, C
+0948   4AA8             ;------------------------------------------------
+0949   4AA8             marcaErroCartao: 
+0950   4AA8 FD 4E 30    	ld		c, (iy+NUMSD)				; cartao atual (1 ou 2)
+0951   4AAB FD 7E 31    	ld		a, (iy+FLAGSCARTAO)			; marcar erro
+0952   4AAE B1          	or		c
+0953   4AAF FD 77 31    	ld		(iy+FLAGSCARTAO), a
+0954   4AB2 C9          	ret
+0955   4AB3             
+0956   4AB3             ;------------------------------------------------
+0957   4AB3             ; Testar se cartao atual esta protegido contra
+0958   4AB3             ; gravacao, A=0 se protegido
+0959   4AB3             ; Destroi AF, C
+0960   4AB3             ;------------------------------------------------
+0961   4AB3             testaWP: 
+0962   4AB3 FD 4E 30    	ld		c, (iy+NUMSD)				; cartao atual (1 ou 2)
+0963   4AB6 CB 01       	rlc		c							; desloca para apontar para bits 2 ou 3 para cartoes 1 ou 2 respectivamente
+0964   4AB8 CB 01       	rlc		c
+0965   4ABA CD F7 5D    	call	modoSPI
+0966   4ABD 3A 00 48    	ld		a, (PORTCFG)				; testar se cartao esta protegido
+0967   4AC0 CD FF 5D    	call	modoROM
+0968   4AC3 A1          	and		c
+0969   4AC4 C9          	ret									; se A for 0 cartao esta protegido
+0970   4AC5             
+0971   4AC5             ;------------------------------------------------
+0972   4AC5             ; Calcula offset do buffer na RAM em HL e IX para
+0973   4AC5             ; os dados do CID dependendo do cartao atual
+0974   4AC5             ; Destroi AF, DE, HL e IX
+0975   4AC5             ;------------------------------------------------
+0976   4AC5             calculaCIDoffset: 
+0977   4AC5 FD E5       	push	iy							; copiamos IY para HL
+0978   4AC7 E1          	pop		hl
+0979   4AC8 16 00       	ld		d, 0
+0980   4ACA 1E 10       	ld		e, BCID1					; DE aponta para buffer BCID1
+0981   4ACC FD 7E 30    	ld		a, (iy+NUMSD)				; vamos fazer IX apontar para o buffer correto
+0982   4ACF 3D          	dec		a							; dependendo do cartao: BCID1 ou BCID2
+0983   4AD0 28 02       	jr		z, .c1
+0984   4AD2 1E 20       	ld		e, BCID2					; DE aponta para buffer BCID2
+0985   4AD4             .c1: 
+0986   4AD4 19          	add		hl, de						; HL aponta para buffer correto
+0987   4AD5 E5          	push	hl		
+0988   4AD6 DD E1       	pop		ix							; vamos colocar HL em IX
+0989   4AD8 C9          	ret
+0990   4AD9             
+0991   4AD9             ;------------------------------------------------
+0992   4AD9             ; Calcula offset do buffer na RAM para os dados
+0993   4AD9             ; do total de blocos dependendo do cartao atual
+0994   4AD9             ; Offset fica em HL e IX
+0995   4AD9             ; Destroi AF, DE, HL e IX
+0996   4AD9             ;------------------------------------------------
+0997   4AD9             calculaBLOCOSoffset: 
+0998   4AD9 FD E5       	push	iy							; copiamos IY para HL
+0999   4ADB E1          	pop		hl
+1000   4ADC 16 00       	ld		d, 0
+1001   4ADE 1E 38       	ld		e, BLOCOS1					; DE aponta para buffer BLOCOS1
+1002   4AE0 FD 7E 30    	ld		a, (iy+NUMSD)				; Vamos fazer IX apontar para o buffer correto
+1003   4AE3 3D          	dec		a							; dependendo do cartao: BLOCOS1 ou BLOCOS2
+1004   4AE4 28 02       	jr		z, .c1
+1005   4AE6 1E 3C       	ld		e, BLOCOS2					; DE aponta para buffer BLOCOS2
+1006   4AE8             .c1: 
+1007   4AE8 19          	add		hl, de						; HL aponta para buffer correto
+1008   4AE9 E5          	push	hl		
+1009   4AEA DD E1       	pop		ix							; Vamos colocar HL em IX
+1010   4AEC C9          	ret
+1011   4AED             
+1012   4AED             
+1013   4AED             ;------------------------------------------------
+1014   4AED             ; Minhas funcoes para cartao SD
+1015   4AED             ;------------------------------------------------
+1016   4AED             
+1017   4AED             ;------------------------------------------------
+1018   4AED             ; Processo de inicializacao e deteccao do cartao.
+1019   4AED             ; Detecta se cartao responde, qual versao (SDV1
+1020   4AED             ; ou SDV2), faz a leitura do CSD e CID e calcula
+1021   4AED             ; o numero de blocos do cartao, colocando o CID
+1022   4AED             ; e total de blocos no buffer correto dependendo
+1023   4AED             ; do cartao 1 ou 2.
+1024   4AED             ; Retorna erro no carry. Se for 0 indica deteccao
+1025   4AED             ; com sucesso.
+1026   4AED             ; Destroi todos os registradores
+1027   4AED             ;------------------------------------------------
+1028   4AED             detectaCartao: 
+1029   4AED CD 1F 4C    	call	iniciaSD						; manda pulsos de clock e comandos iniciais
+1030   4AF0 D8          	ret	c									; retorna se erro
+1031   4AF1 CD BC 4B    	call	testaSDCV2						; tenta inicializar um cartao SDV2
+1032   4AF4 D8          	ret	c
+1033   4AF5 FD E5       	push	iy								; colocar em HL buffer da RAM de trabalho
+1034   4AF7 E1          	pop		hl								; CSD esta no offset 0, nao precisamos somar
+1035   4AF8 3E 49       	ld		a, CMD9							; ler CSD
+1036   4AFA CD EB 4B    	call	lerBlocoCxD
+1037   4AFD D8          	ret	c
+1038   4AFE CD C5 4A    	call	calculaCIDoffset				; calculamos em IX e HL a posicao correta do offset CID dependendo do cartao atual
+1039   4B01 3E 4A       	ld		a, CMD10						; ler CID
+1040   4B03 CD EB 4B    	call	lerBlocoCxD
+1041   4B06 D8          	ret	c
+1042   4B07 3E 7A       	ld		a, CMD58						; ler OCR
+1043   4B09 11 00 00    	ld		de, 0
+1044   4B0C CD 62 4C    	call	SD_SEND_CMD_2_ARGS_GET_R3		; enviar comando e receber resposta tipo R3
+1045   4B0F D8          	ret	c
+1046   4B10 78          	ld		a, b							; testa bit CCS do OCR que informa se cartao eh SDV1 ou SDV2
+1047   4B11 E6 40       	and		$40
+1048   4B13 DD 77 0F    	ld		(ix+15), a						; salva informacao da versao do SD (V1 ou V2) no byte 15 do CID
+1049   4B16 CC B1 4B    	call	z, mudarTamanhoBlocoPara512		; se bit CCS do OCR for 1, eh cartao SDV2 (Block address - SDHC ou SDXD)
+1050   4B19 D8          	ret c									; e nao precisamos mudar tamanho do bloco para 512
+1051   4B1A CD 3E 4C    	call	desabilitaSDs
+1052   4B1D             											; agora vamos calcular o total de blocos dependendo dos dados do CSD
+1053   4B1D CD D9 4A    	call	calculaBLOCOSoffset				; calcular em IX e HL o offset correto do buffer que armazena total de blocos
+1054   4B20 FD E5       	push	iy								; copiamos IY para HL
+1055   4B22 E1          	pop		hl
+1056   4B23 16 00       	ld		d, 0
+1057   4B25 1E 05       	ld		e, BCSD+5
+1058   4B27 19          	add		hl, de							; HL aponta para buffer BCSD+5
+1059   4B28 FD 7E 00    	ld		a, (iy+BCSD)
+1060   4B2B E6 C0       	and		$C0								; testa versao do registro CSD
+1061   4B2D 28 06       	jr		z, .calculaCSD1
+1062   4B2F FE 40       	cp		$40
+1063   4B31 28 54       	jr		z, .calculaCSD2
+1064   4B33 37          	scf										; versao do registro CSD nao reconhecida, informa erro na deteccao
+1065   4B34 C9          	ret
+1066   4B35             
+1067   4B35             ; -----------------------------------
+1068   4B35             ; Registro CSD versao 1, calcular da
+1069   4B35             ; maneira correta para a versao 1
+1070   4B35             ; -----------------------------------
+1071   4B35             .calculaCSD1: 
+1072   4B35 7E          	ld		a, (hl)
+1073   4B36 E6 0F       	and		$0F								; isola READ_BL_LEN
+1074   4B38 F5          	push	af
+1075   4B39 23          	inc		hl
+1076   4B3A 7E          	ld		a, (hl)							; 2 primeiros bits de C_SIZE
+1077   4B3B E6 03       	and		3
+1078   4B3D 57          	ld		d, a
+1079   4B3E 23          	inc		hl
+1080   4B3F 5E          	ld		e, (hl)							; 8 bits de C_SIZE (DE contem os primeiros 10 bits de C_SIZE)
+1081   4B40 23          	inc		hl
+1082   4B41 7E          	ld		a, (hl)
+1083   4B42 E6 C0       	and		$C0								; 2 ultimos bits de C_SIZE
+1084   4B44 87          	add		a, a							; rotaciona a esquerda
+1085   4B45 CB 13       	rl		e								; rotaciona	para DE
+1086   4B47 CB 12       	rl		d
+1087   4B49 87          	add		a, a							; mais uma rotacao
+1088   4B4A CB 13       	rl		e								; rotaciona para DE
+1089   4B4C CB 12       	rl		d
+1090   4B4E 13          	inc		de								; agora DE contem todos os 12 bits de C_SIZE, incrementa 1
+1091   4B4F 23          	inc		hl
+1092   4B50 7E          	ld		a, (hl)							; proximo byte
+1093   4B51 E6 03       	and		3								; 2 bits de C_SIZE_MUL
+1094   4B53 47          	ld		b, a							; B contem os 2 bits de C_SIZE_MUL
+1095   4B54 23          	inc		hl						
+1096   4B55 7E          	ld		a, (hl)							; proximo byte
+1097   4B56 E6 80       	and		$80								; 1 bit de C_SIZE_MUL
+1098   4B58 87          	add		a, a							; rotaciona para esquerda jogando no carry
+1099   4B59 CB 10       	rl		b								; rotaciona para B
+1100   4B5B 04          	inc		b								; agora B contem os 3 bits de C_SIZE_MUL
+1101   4B5C 04          	inc		b								; faz B = C_SIZE_MUL + 2
+1102   4B5D F1          	pop		af								; volta em A o READ_BL_LEN
+1103   4B5E 80          	add		a, b							; A = READ_BL_LEN + (C_SIZE_MUL+2)
+1104   4B5F 01 00 00    	ld		bc, 0
+1105   4B62 CD 7B 4B    	call	.eleva2
+1106   4B65 5A          	ld		e, d							; aqui temos 32 bits (BC DE) com o tamanho do cartao
+1107   4B66 51          	ld		d, c							; ignoramos os 8 ultimos bits em E, fazemos BC DE => 0B CD (divide por 256)
+1108   4B67 48          	ld		c, b
+1109   4B68 06 00       	ld		b, 0
+1110   4B6A CB 39       	srl		c								; rotacionamos a direita o C, carry = LSB (divide por 2)
+1111   4B6C CB 1A       	rr		d								; rotacionamos D e E
+1112   4B6E CB 1B       	rr		e								; no final BC DE contem tamanho do cartao / 512 = numero de blocos
+1113   4B70             .salvaBlocos: 
+1114   4B70 DD 71 02    	ld		(ix+2), c						; colocar no buffer BLOCOS correto a quantidade de blocos
+1115   4B73 DD 72 01    	ld		(ix+1), d						; que o cartao (1 ou 2) tem
+1116   4B76 DD 73 00    	ld		(ix), e
+1117   4B79 AF          	xor		a								; limpa carry
+1118   4B7A C9          	ret
+1119   4B7B             
+1120   4B7B             .eleva2: 									; aqui temos: A = (READ_BL_LEN + (C_SIZE_MUL+2))
+1121   4B7B             											; BC = 0
+1122   4B7B             											; DE = C_SIZE
+1123   4B7B CB 23       	sla		e								; rotacionamos C_SIZE por 'A' vezes
+1124   4B7D CB 12       	rl		d
+1125   4B7F CB 11       	rl		c
+1126   4B81 CB 10       	rl		b
+1127   4B83 3D          	dec		a								; subtraimos 1
+1128   4B84 20 F5       	jr		nz, .eleva2
+1129   4B86 C9          	ret										; em BC DE temos o tamanho do cartao (bytes) em 32 bits
+1130   4B87             
+1131   4B87             ; -----------------------------------
+1132   4B87             ; Registro CSD versao 2, calcular da
+1133   4B87             ; maneira correta para a versao 2
+1134   4B87             ; -----------------------------------
+1135   4B87             .calculaCSD2: 
+1136   4B87 23          	inc		hl								; HL ja aponta para BCSD+5, fazer HL apontar para BCSD+7
+1137   4B88 23          	inc		hl
+1138   4B89 7E          	ld		a, (hl)
+1139   4B8A E6 3F       	and		$3F
+1140   4B8C 4F          	ld		c, a
+1141   4B8D 23          	inc		hl
+1142   4B8E 56          	ld		d, (hl)
+1143   4B8F 23          	inc		hl
+1144   4B90 5E          	ld		e, (hl)
+1145   4B91 CD 9D 4B    	call	.inc32							; soma 1
+1146   4B94 CD A5 4B    	call	.desloca32						; multiplica por 512
+1147   4B97 CD AA 4B    	call	.rotaciona24					; multiplica por 2
+1148   4B9A C3 70 4B    	jp		.salvaBlocos
+1149   4B9D             
+1150   4B9D             .inc32: 
+1151   4B9D 1C          	inc		e
+1152   4B9E C0          	ret	nz
+1153   4B9F 14          	inc		d
+1154   4BA0 C0          	ret	nz
+1155   4BA1 0C          	inc		c
+1156   4BA2 C0          	ret	nz
+1157   4BA3 04          	inc		b
+1158   4BA4 C9          	ret
+1159   4BA5             
+1160   4BA5             .desloca32: 
+1161   4BA5 41          	ld		b, c
+1162   4BA6 4A          	ld		c, d
+1163   4BA7 53          	ld		d, e
+1164   4BA8 1E 00       	ld		e, 0
+1165   4BAA             .rotaciona24: 
+1166   4BAA CB 22       	sla		d
+1167   4BAC CB 11       	rl		c
+1168   4BAE CB 10       	rl		b
+1169   4BB0 C9          	ret
+1170   4BB1             
+1171   4BB1             ; ------------------------------------------------
+1172   4BB1             ; Setar o tamanho do bloco para 512 se o cartao
+1173   4BB1             ; for SDV1
+1174   4BB1             ; ------------------------------------------------
+1175   4BB1             mudarTamanhoBlocoPara512: 
+1176   4BB1 3E 50       	ld		a, CMD16
+1177   4BB3 01 00 00    	ld		bc, 0
+1178   4BB6 11 00 02    	ld		de, 512
+1179   4BB9 C3 4D 4C    	jp		SD_SEND_CMD_GET_ERROR
+1180   4BBC             
+1181   4BBC             ; ------------------------------------------------
+1182   4BBC             ; Tenta inicializar um cartao SDV2, se houver erro
+1183   4BBC             ; o cartao deve ser SDV1
+1184   4BBC             ; ------------------------------------------------
+1185   4BBC             testaSDCV2: 
+1186   4BBC 3E 48       	ld		a, CMD8
+1187   4BBE 11 AA 01    	ld		de, $1AA
+1188   4BC1 CD 62 4C    	call	SD_SEND_CMD_2_ARGS_GET_R3
+1189   4BC4 21 46 4C    	ld		hl, SD_SEND_CMD1			; HL aponta para rotina correta
+1190   4BC7 38 03       	jr		c, .pula					; cartao recusou CMD8, enviar comando CMD1
+1191   4BC9 21 DD 4B    	ld		hl, SD_SEND_ACMD41			; cartao aceitou CMD8, enviar comando ACMD41
+1192   4BCC             .pula: 
+1193   4BCC 01 78 00    	ld		bc, 120						; 120 tentativas
+1194   4BCF             .loop: 
+1195   4BCF C5          	push	bc
+1196   4BD0 CD DC 4B    	call	.jumpHL						; chamar rotina correta em HL
+1197   4BD3 C1          	pop		bc
+1198   4BD4 D0          	ret		nc
+1199   4BD5 10 F8       	djnz	.loop
+1200   4BD7 0D          	dec		c
+1201   4BD8 20 F5       	jr		nz, .loop
+1202   4BDA 37          	scf
+1203   4BDB C9          	ret
+1204   4BDC             .jumpHL: 
+1205   4BDC E9          	jp	(hl)							; chamar rotina correta em HL
+1206   4BDD             
+1207   4BDD             ; ------------------------------------------------
+1208   4BDD             ; Enviar comando ACMD41
+1209   4BDD             ; ------------------------------------------------
+1210   4BDD             SD_SEND_ACMD41: 
+1211   4BDD 3E 77       	ld		a, CMD55
+1212   4BDF CD 48 4C    	call	SD_SEND_CMD_NO_ARGS
+1213   4BE2 3E 69       	ld		a, ACMD41
+1214   4BE4 01 00 40    	ld		bc, $4000
+1215   4BE7 51          	ld		d, c
+1216   4BE8 59          	ld		e, c
+1217   4BE9 18 62       	jr		SD_SEND_CMD_GET_ERROR
+1218   4BEB             
+1219   4BEB             ; ------------------------------------------------
+1220   4BEB             ; Ler registro CID ou CSD, o comando vem em A
+1221   4BEB             ; ------------------------------------------------
+1222   4BEB             lerBlocoCxD: 
+1223   4BEB CD 48 4C    	call	SD_SEND_CMD_NO_ARGS
+1224   4BEE D8          	ret	c
+1225   4BEF CD AB 4C    	call	WAIT_RESP_FE
+1226   4BF2 D8          	ret	c
+1227   4BF3 11 00 40    	ld		de, PORTSPI
+1228   4BF6 EB          	ex		hl, de
+1229   4BF7 ED A0       > ldi							
+1229   4BF9 ED A0       > ldi							
+1229   4BFB ED A0       > ldi							
+1229   4BFD ED A0       > ldi							
+1229   4BFF ED A0       > ldi							
+1229   4C01 ED A0       > ldi							
+1229   4C03 ED A0       > ldi							
+1229   4C05 ED A0       > ldi							
+1229   4C07 ED A0       > ldi							
+1229   4C09 ED A0       > ldi							
+1229   4C0B ED A0       > ldi							
+1229   4C0D ED A0       > ldi							
+1229   4C0F ED A0       > ldi							
+1229   4C11 ED A0       > ldi							
+1229   4C13 ED A0       > ldi							
+1229   4C15 ED A0       > ldi							
+1230   4C17 00          	nop
+1231   4C18 7E          	ld		a, (hl)
+1232   4C19 00          	nop
+1233   4C1A 7E          	ld		a, (hl)						; byte de resposta
+1234   4C1B B7          	or		a
+1235   4C1C EB          	ex		hl, de
+1236   4C1D 18 1F       	jr		desabilitaSDs
+1237   4C1F             
+1238   4C1F             ; ------------------------------------------------
+1239   4C1F             ; Algoritmo para inicializar um cartao SD
+1240   4C1F             ; Destroi AF, B, DE
+1241   4C1F             ; ------------------------------------------------
+1242   4C1F             iniciaSD: 
+1243   4C1F CD 3E 4C    	call	desabilitaSDs
+1244   4C22             
+1245   4C22 06 0A       	ld		b, 10						; enviar 80 pulsos de clock com cartao desabilitado
+1246   4C24             enviaClocksInicio: 
+1247   4C24 3E FF       	ld		a, $FF						; manter MOSI em 1
+1248   4C26 32 00 40    	ld		(PORTSPI), a
+1249   4C29 10 F9       	djnz	enviaClocksInicio
+1250   4C2B CD D7 4C    	call	setaSDAtual					; ativar cartao atual
+1251   4C2E 06 08       	ld		b, 8						; 8 tentativas para CMD0
+1252   4C30             SD_SEND_CMD0: 
+1253   4C30 3E 40       	ld		a, CMD0						; primeiro comando: CMD0
+1254   4C32 11 00 00    	ld		de, 0
+1255   4C35 C5          	push	bc
+1256   4C36 CD 55 4C    	call	SD_SEND_CMD_2_ARGS_TEST_BUSY
+1257   4C39 C1          	pop		bc
+1258   4C3A D0          	ret	nc								; retorna se cartao respondeu ao CMD0
+1259   4C3B 10 F3       	djnz	SD_SEND_CMD0
+1260   4C3D 37          	scf									; cartao nao respondeu ao CMD0, informar erro
+1261   4C3E             	; fall throw
+1262   4C3E             
+1263   4C3E             ; ------------------------------------------------
+1264   4C3E             ; Desabilitar (de-selecionar) todos os cartoes
+1265   4C3E             ; Nao destroi registradores
+1266   4C3E             ; ------------------------------------------------
+1267   4C3E             desabilitaSDs: 
+1268   4C3E F5          	push	af
+1269   4C3F 3E FF       	ld		a, $FF						; todos os /CS em 1
+1270   4C41 32 00 48    	ld		(PORTCFG), a
+1271   4C44 F1          	pop		af
+1272   4C45 C9          	ret
+1273   4C46             
+1274   4C46             ; ------------------------------------------------
+1275   4C46             ; Enviar CMD1 para cartao. Carry indica erro
+1276   4C46             ; Destroi AF, BC, DE
+1277   4C46             ; ------------------------------------------------
+1278   4C46             SD_SEND_CMD1: 
+1279   4C46 3E 41       	ld		a, CMD1
+1280   4C48             SD_SEND_CMD_NO_ARGS: 
+1281   4C48 01 00 00    	ld		bc, 0
+1282   4C4B 50          	ld		d, b
+1283   4C4C 59          	ld		e, c
+1284   4C4D             SD_SEND_CMD_GET_ERROR: 
+1285   4C4D CD 7B 4C    	call	SD_SEND_CMD
+1286   4C50 B7          	or		a
+1287   4C51 C8          	ret	z								; se A=0 nao houve erro, retornar
+1288   4C52             	; fall throw
+1289   4C52             
+1290   4C52             ; ------------------------------------------------
+1291   4C52             ; Informar erro
+1292   4C52             ; Nao destroi registradores
+1293   4C52             ; ------------------------------------------------
+1294   4C52             setaErro: 
+1295   4C52 37          	scf
+1296   4C53 18 E9       	jr		desabilitaSDs
+1297   4C55             
+1298   4C55             ; ------------------------------------------------
+1299   4C55             ; Enviar comando em A com 2 bytes de parametros
+1300   4C55             ; em DE e testar retorno BUSY
+1301   4C55             ; Retorna em A a resposta do cartao
+1302   4C55             ; Destroi AF, BC
+1303   4C55             ; ------------------------------------------------
+1304   4C55             SD_SEND_CMD_2_ARGS_TEST_BUSY: 
+1305   4C55 01 00 00    	ld		bc, 0
+1306   4C58 CD 7B 4C    	call	SD_SEND_CMD
+1307   4C5B 47          	ld		b, a
+1308   4C5C E6 FE       	and		$FE							; testar bit 0 (flag BUSY)
+1309   4C5E 78          	ld		a, b
+1310   4C5F 20 F1       	jr		nz, setaErro				; BUSY em 1, informar erro
+1311   4C61 C9          	ret									; sem erros
+1312   4C62             
+1313   4C62             ; ------------------------------------------------
+1314   4C62             ; Enviar comando em A com 2 bytes de parametros
+1315   4C62             ; em DE e ler resposta do tipo R3 em BC DE
+1316   4C62             ; Retorna em A a resposta do cartao
+1317   4C62             ; Destroi AF, BC, DE, HL
+1318   4C62             ; ------------------------------------------------
+1319   4C62             SD_SEND_CMD_2_ARGS_GET_R3: 
+1320   4C62 CD 55 4C    	call	SD_SEND_CMD_2_ARGS_TEST_BUSY
+1321   4C65 D8          	ret	c
+1322   4C66 F5          	push	af
+1323   4C67 CD B9 4C    	call	WAIT_RESP_NO_FF
+1324   4C6A 67          	ld		h, a
+1325   4C6B CD B9 4C    	call	WAIT_RESP_NO_FF
+1326   4C6E 6F          	ld		l, a
+1327   4C6F CD B9 4C    	call	WAIT_RESP_NO_FF
+1328   4C72 57          	ld		d, a
+1329   4C73 CD B9 4C    	call	WAIT_RESP_NO_FF
+1330   4C76 5F          	ld		e, a
+1331   4C77 44          	ld		b, h
+1332   4C78 4D          	ld		c, l
+1333   4C79 F1          	pop		af
+1334   4C7A C9          	ret
+1335   4C7B             
+1336   4C7B             ; ------------------------------------------------
+1337   4C7B             ; Enviar comando em A com 4 bytes de parametros
+1338   4C7B             ; em BC DE e enviar CRC correto se for CMD0 ou 
+1339   4C7B             ; CMD8 e aguardar processamento do cartao
+1340   4C7B             ; Destroi AF, BC
+1341   4C7B             ; ------------------------------------------------
+1342   4C7B             SD_SEND_CMD: 
+1343   4C7B CD D7 4C    	call	setaSDAtual
+1344   4C7E 32 00 40    	ld		(PORTSPI), a
+1345   4C81 F5          	push	af
+1346   4C82 78          	ld		a, b
+1347   4C83 00          	nop
+1348   4C84 32 00 40    	ld		(PORTSPI), a
+1349   4C87 79          	ld		a, c
+1350   4C88 00          	nop
+1351   4C89 32 00 40    	ld		(PORTSPI), a
+1352   4C8C 7A          	ld		a, d
+1353   4C8D 00          	nop
+1354   4C8E 32 00 40    	ld		(PORTSPI), a
+1355   4C91 7B          	ld		a, e
+1356   4C92 00          	nop
+1357   4C93 32 00 40    	ld		(PORTSPI), a
+1358   4C96 F1          	pop		af
+1359   4C97 FE 40       	cp		CMD0
+1360   4C99 06 95       	ld		b, $95						; CRC para CMD0
+1361   4C9B 28 08       	jr		z, enviaCRC
+1362   4C9D FE 48       	cp		CMD8
+1363   4C9F 06 87       	ld		b, $87						; CRC para CMD8
+1364   4CA1 28 02       	jr		z, enviaCRC
+1365   4CA3 06 FF       	ld		b, $FF						; CRC dummy
+1366   4CA5             enviaCRC: 
+1367   4CA5 78          	ld		a, b
+1368   4CA6 32 00 40    	ld		(PORTSPI), a
+1369   4CA9 18 0E       	jr		WAIT_RESP_NO_FF
+1370   4CAB             
+1371   4CAB             ; ------------------------------------------------
+1372   4CAB             ; Esperar que resposta do cartao seja $FE
+1373   4CAB             ; Destroi AF, B
+1374   4CAB             ; ------------------------------------------------
+1375   4CAB             WAIT_RESP_FE: 
+1376   4CAB 06 0A       	ld		b, 10						; 10 tentativas
+1377   4CAD             .loop: 
+1378   4CAD C5          	push	bc
+1379   4CAE CD B9 4C    	call	WAIT_RESP_NO_FF				; esperar resposta diferente de $FF
+1380   4CB1 C1          	pop		bc
+1381   4CB2 FE FE       	cp		$FE							; resposta é $FE ?
+1382   4CB4 C8          	ret	z								; sim, retornamos com carry=0
+1383   4CB5 10 F6       	djnz	.loop
+1384   4CB7 37          	scf									; erro, carry=1
+1385   4CB8 C9          	ret
+1386   4CB9             
+1387   4CB9             ; ------------------------------------------------
+1388   4CB9             ; Esperar que resposta do cartao seja diferente
+1389   4CB9             ; de $FF
+1390   4CB9             ; Destroi AF, BC
+1391   4CB9             ; ------------------------------------------------
+1392   4CB9             WAIT_RESP_NO_FF: 
+1393   4CB9 01 64 00    	ld		bc, 100						; 100 tentativas
+1394   4CBC             .loop: 
+1395   4CBC 3A 00 40    	ld		a, (PORTSPI)
+1396   4CBF FE FF       	cp		$FF							; testa $FF
+1397   4CC1 C0          	ret	nz								; sai se nao for $FF
+1398   4CC2 10 F8       	djnz	.loop
+1399   4CC4 0D          	dec		c
+1400   4CC5 20 F5       	jr		nz, .loop
+1401   4CC7 C9          	ret
+1402   4CC8             
+1403   4CC8             ; ------------------------------------------------
+1404   4CC8             ; Esperar que resposta do cartao seja diferente
+1405   4CC8             ; de $00
+1406   4CC8             ; Destroi A, BC
+1407   4CC8             ; ------------------------------------------------
+1408   4CC8             WAIT_RESP_NO_00: 
+1409   4CC8 01 00 80    	ld		bc, 32768					; 32768 tentativas
+1410   4CCB             .loop: 
+1411   4CCB 3A 00 40    	ld		a, (PORTSPI)
+1412   4CCE B7          	or		a
+1413   4CCF C0          	ret	nz								; se resposta for <> $00, sai
+1414   4CD0 10 F9       	djnz	.loop
+1415   4CD2 0D          	dec		c
+1416   4CD3 20 F6       	jr		nz, .loop
+1417   4CD5 37          	scf									; erro
+1418   4CD6 C9          	ret
+1419   4CD7             
+1420   4CD7             ; ------------------------------------------------
+1421   4CD7             ; Ativa (seleciona) cartao atual baixando seu /CS
+1422   4CD7             ; Nao destroi registradores
+1423   4CD7             ; ------------------------------------------------
+1424   4CD7             setaSDAtual: 
+1425   4CD7 F5          	push	af
+1426   4CD8 3A 00 40    	ld		a, (PORTSPI)				; dummy read
+1427   4CDB FD 7E 30    	ld		a, (iy+NUMSD)
+1428   4CDE 2F          	cpl									; inverte bits
+1429   4CDF 32 00 48    	ld		(PORTCFG), a
+1430   4CE2 F1          	pop		af
+1431   4CE3 C9          	ret
+1432   4CE4             
+1433   4CE4             
+1434   4CE4             ; ------------------------------------------------
+1435   4CE4             ; Grava um bloco de 512 bytes no cartao
+1436   4CE4             ; HL aponta para o inicio dos dados
+1437   4CE4             ; BC e DE contem o numero do bloco (BCDE = 32 bits)
+1438   4CE4             ; Destroi AF, BC, DE, HL
+1439   4CE4             ; ------------------------------------------------
+1440   4CE4             GravarBloco: 
+1441   4CE4 DD 7E 0F    	ld		a, (ix+15)					; verificar se eh SDV1 ou SDV2
+1442   4CE7 B7          	or		a
+1443   4CE8 CC EB 5D    	call	z, blocoParaByte			; se for SDV1 coverter blocos para bytes
+1444   4CEB CD D7 4C    	call	setaSDAtual					; selecionar cartao atual
+1445   4CEE FD 7E 32    	ld		a, (iy+NUMBLOCOS)			; testar se Nextor quer gravar 1 ou mais blocos
+1446   4CF1 3D          	dec		a
+1447   4CF2 CA 59 51    	jp		z, .umBloco					; somente um bloco, gravar usando CMD24
+1448   4CF5             
+1449   4CF5             ; multiplos blocos
+1450   4CF5 C5          	push	bc
+1451   4CF6 D5          	push	de
+1452   4CF7 3E 77       	ld		a, CMD55					; Multiplos blocos, mandar ACMD23 com total de blocos
+1453   4CF9 CD 48 4C    	call	SD_SEND_CMD_NO_ARGS
+1454   4CFC 3E 57       	ld		a, ACMD23
+1455   4CFE 01 00 00    	ld		bc, 0
+1456   4D01 51          	ld		d, c
+1457   4D02 FD 5E 32    	ld		e, (iy+NUMBLOCOS)			; parametro = total de blocos a gravar
+1458   4D05 CD 4D 4C    	call	SD_SEND_CMD_GET_ERROR
+1459   4D08 D1          	pop		de
+1460   4D09 C1          	pop		bc
+1461   4D0A DA 60 51    	jp		c, .erro					; erro no ACMD23
+1462   4D0D 3E 59       	ld		a, CMD25					; comando CMD25 = write multiple blocks
+1463   4D0F CD 4D 4C    	call	SD_SEND_CMD_GET_ERROR
+1464   4D12 DA 60 51    	jp		c, .erro					; erro
+1465   4D15             .loop: 
+1466   4D15 3E FC       	ld		a, $FC						; mandar $FC para indicar que os proximos dados sao
+1467   4D17 32 00 40    	ld		(PORTSPI),	a				; dados para gravacao
+1468   4D1A 11 00 40    	ld		de, PORTSPI
+1469   4D1D ED A0       > ldi							
+1469   4D1F ED A0       > ldi							
+1469   4D21 ED A0       > ldi							
+1469   4D23 ED A0       > ldi							
+1469   4D25 ED A0       > ldi							
+1469   4D27 ED A0       > ldi							
+1469   4D29 ED A0       > ldi							
+1469   4D2B ED A0       > ldi							
+1469   4D2D ED A0       > ldi							
+1469   4D2F ED A0       > ldi							
+1469   4D31 ED A0       > ldi							
+1469   4D33 ED A0       > ldi							
+1469   4D35 ED A0       > ldi							
+1469   4D37 ED A0       > ldi							
+1469   4D39 ED A0       > ldi							
+1469   4D3B ED A0       > ldi							
+1469   4D3D ED A0       > ldi							
+1469   4D3F ED A0       > ldi							
+1469   4D41 ED A0       > ldi							
+1469   4D43 ED A0       > ldi							
+1469   4D45 ED A0       > ldi							
+1469   4D47 ED A0       > ldi							
+1469   4D49 ED A0       > ldi							
+1469   4D4B ED A0       > ldi							
+1469   4D4D ED A0       > ldi							
+1469   4D4F ED A0       > ldi							
+1469   4D51 ED A0       > ldi							
+1469   4D53 ED A0       > ldi							
+1469   4D55 ED A0       > ldi							
+1469   4D57 ED A0       > ldi							
+1469   4D59 ED A0       > ldi							
+1469   4D5B ED A0       > ldi							
+1469   4D5D ED A0       > ldi							
+1469   4D5F ED A0       > ldi							
+1469   4D61 ED A0       > ldi							
+1469   4D63 ED A0       > ldi							
+1469   4D65 ED A0       > ldi							
+1469   4D67 ED A0       > ldi							
+1469   4D69 ED A0       > ldi							
+1469   4D6B ED A0       > ldi							
+1469   4D6D ED A0       > ldi							
+1469   4D6F ED A0       > ldi							
+1469   4D71 ED A0       > ldi							
+1469   4D73 ED A0       > ldi							
+1469   4D75 ED A0       > ldi							
+1469   4D77 ED A0       > ldi							
+1469   4D79 ED A0       > ldi							
+1469   4D7B ED A0       > ldi							
+1469   4D7D ED A0       > ldi							
+1469   4D7F ED A0       > ldi							
+1469   4D81 ED A0       > ldi							
+1469   4D83 ED A0       > ldi							
+1469   4D85 ED A0       > ldi							
+1469   4D87 ED A0       > ldi							
+1469   4D89 ED A0       > ldi							
+1469   4D8B ED A0       > ldi							
+1469   4D8D ED A0       > ldi							
+1469   4D8F ED A0       > ldi							
+1469   4D91 ED A0       > ldi							
+1469   4D93 ED A0       > ldi							
+1469   4D95 ED A0       > ldi							
+1469   4D97 ED A0       > ldi							
+1469   4D99 ED A0       > ldi							
+1469   4D9B ED A0       > ldi							
+1469   4D9D ED A0       > ldi							
+1469   4D9F ED A0       > ldi							
+1469   4DA1 ED A0       > ldi							
+1469   4DA3 ED A0       > ldi							
+1469   4DA5 ED A0       > ldi							
+1469   4DA7 ED A0       > ldi							
+1469   4DA9 ED A0       > ldi							
+1469   4DAB ED A0       > ldi							
+1469   4DAD ED A0       > ldi							
+1469   4DAF ED A0       > ldi							
+1469   4DB1 ED A0       > ldi							
+1469   4DB3 ED A0       > ldi							
+1469   4DB5 ED A0       > ldi							
+1469   4DB7 ED A0       > ldi							
+1469   4DB9 ED A0       > ldi							
+1469   4DBB ED A0       > ldi							
+1469   4DBD ED A0       > ldi							
+1469   4DBF ED A0       > ldi							
+1469   4DC1 ED A0       > ldi							
+1469   4DC3 ED A0       > ldi							
+1469   4DC5 ED A0       > ldi							
+1469   4DC7 ED A0       > ldi							
+1469   4DC9 ED A0       > ldi							
+1469   4DCB ED A0       > ldi							
+1469   4DCD ED A0       > ldi							
+1469   4DCF ED A0       > ldi							
+1469   4DD1 ED A0       > ldi							
+1469   4DD3 ED A0       > ldi							
+1469   4DD5 ED A0       > ldi							
+1469   4DD7 ED A0       > ldi							
+1469   4DD9 ED A0       > ldi							
+1469   4DDB ED A0       > ldi							
+1469   4DDD ED A0       > ldi							
+1469   4DDF ED A0       > ldi							
+1469   4DE1 ED A0       > ldi							
+1469   4DE3 ED A0       > ldi							
+1469   4DE5 ED A0       > ldi							
+1469   4DE7 ED A0       > ldi							
+1469   4DE9 ED A0       > ldi							
+1469   4DEB ED A0       > ldi							
+1469   4DED ED A0       > ldi							
+1469   4DEF ED A0       > ldi							
+1469   4DF1 ED A0       > ldi							
+1469   4DF3 ED A0       > ldi							
+1469   4DF5 ED A0       > ldi							
+1469   4DF7 ED A0       > ldi							
+1469   4DF9 ED A0       > ldi							
+1469   4DFB ED A0       > ldi							
+1469   4DFD ED A0       > ldi							
+1469   4DFF ED A0       > ldi							
+1469   4E01 ED A0       > ldi							
+1469   4E03 ED A0       > ldi							
+1469   4E05 ED A0       > ldi							
+1469   4E07 ED A0       > ldi							
+1469   4E09 ED A0       > ldi							
+1469   4E0B ED A0       > ldi							
+1469   4E0D ED A0       > ldi							
+1469   4E0F ED A0       > ldi							
+1469   4E11 ED A0       > ldi							
+1469   4E13 ED A0       > ldi							
+1469   4E15 ED A0       > ldi							
+1469   4E17 ED A0       > ldi							
+1469   4E19 ED A0       > ldi							
+1469   4E1B ED A0       > ldi							
+1469   4E1D ED A0       > ldi							
+1469   4E1F ED A0       > ldi							
+1469   4E21 ED A0       > ldi							
+1469   4E23 ED A0       > ldi							
+1469   4E25 ED A0       > ldi							
+1469   4E27 ED A0       > ldi							
+1469   4E29 ED A0       > ldi							
+1469   4E2B ED A0       > ldi							
+1469   4E2D ED A0       > ldi							
+1469   4E2F ED A0       > ldi							
+1469   4E31 ED A0       > ldi							
+1469   4E33 ED A0       > ldi							
+1469   4E35 ED A0       > ldi							
+1469   4E37 ED A0       > ldi							
+1469   4E39 ED A0       > ldi							
+1469   4E3B ED A0       > ldi							
+1469   4E3D ED A0       > ldi							
+1469   4E3F ED A0       > ldi							
+1469   4E41 ED A0       > ldi							
+1469   4E43 ED A0       > ldi							
+1469   4E45 ED A0       > ldi							
+1469   4E47 ED A0       > ldi							
+1469   4E49 ED A0       > ldi							
+1469   4E4B ED A0       > ldi							
+1469   4E4D ED A0       > ldi							
+1469   4E4F ED A0       > ldi							
+1469   4E51 ED A0       > ldi							
+1469   4E53 ED A0       > ldi							
+1469   4E55 ED A0       > ldi							
+1469   4E57 ED A0       > ldi							
+1469   4E59 ED A0       > ldi							
+1469   4E5B ED A0       > ldi							
+1469   4E5D ED A0       > ldi							
+1469   4E5F ED A0       > ldi							
+1469   4E61 ED A0       > ldi							
+1469   4E63 ED A0       > ldi							
+1469   4E65 ED A0       > ldi							
+1469   4E67 ED A0       > ldi							
+1469   4E69 ED A0       > ldi							
+1469   4E6B ED A0       > ldi							
+1469   4E6D ED A0       > ldi							
+1469   4E6F ED A0       > ldi							
+1469   4E71 ED A0       > ldi							
+1469   4E73 ED A0       > ldi							
+1469   4E75 ED A0       > ldi							
+1469   4E77 ED A0       > ldi							
+1469   4E79 ED A0       > ldi							
+1469   4E7B ED A0       > ldi							
+1469   4E7D ED A0       > ldi							
+1469   4E7F ED A0       > ldi							
+1469   4E81 ED A0       > ldi							
+1469   4E83 ED A0       > ldi							
+1469   4E85 ED A0       > ldi							
+1469   4E87 ED A0       > ldi							
+1469   4E89 ED A0       > ldi							
+1469   4E8B ED A0       > ldi							
+1469   4E8D ED A0       > ldi							
+1469   4E8F ED A0       > ldi							
+1469   4E91 ED A0       > ldi							
+1469   4E93 ED A0       > ldi							
+1469   4E95 ED A0       > ldi							
+1469   4E97 ED A0       > ldi							
+1469   4E99 ED A0       > ldi							
+1469   4E9B ED A0       > ldi							
+1469   4E9D ED A0       > ldi							
+1469   4E9F ED A0       > ldi							
+1469   4EA1 ED A0       > ldi							
+1469   4EA3 ED A0       > ldi							
+1469   4EA5 ED A0       > ldi							
+1469   4EA7 ED A0       > ldi							
+1469   4EA9 ED A0       > ldi							
+1469   4EAB ED A0       > ldi							
+1469   4EAD ED A0       > ldi							
+1469   4EAF ED A0       > ldi							
+1469   4EB1 ED A0       > ldi							
+1469   4EB3 ED A0       > ldi							
+1469   4EB5 ED A0       > ldi							
+1469   4EB7 ED A0       > ldi							
+1469   4EB9 ED A0       > ldi							
+1469   4EBB ED A0       > ldi							
+1469   4EBD ED A0       > ldi							
+1469   4EBF ED A0       > ldi							
+1469   4EC1 ED A0       > ldi							
+1469   4EC3 ED A0       > ldi							
+1469   4EC5 ED A0       > ldi							
+1469   4EC7 ED A0       > ldi							
+1469   4EC9 ED A0       > ldi							
+1469   4ECB ED A0       > ldi							
+1469   4ECD ED A0       > ldi							
+1469   4ECF ED A0       > ldi							
+1469   4ED1 ED A0       > ldi							
+1469   4ED3 ED A0       > ldi							
+1469   4ED5 ED A0       > ldi							
+1469   4ED7 ED A0       > ldi							
+1469   4ED9 ED A0       > ldi							
+1469   4EDB ED A0       > ldi							
+1469   4EDD ED A0       > ldi							
+1469   4EDF ED A0       > ldi							
+1469   4EE1 ED A0       > ldi							
+1469   4EE3 ED A0       > ldi							
+1469   4EE5 ED A0       > ldi							
+1469   4EE7 ED A0       > ldi							
+1469   4EE9 ED A0       > ldi							
+1469   4EEB ED A0       > ldi							
+1469   4EED ED A0       > ldi							
+1469   4EEF ED A0       > ldi							
+1469   4EF1 ED A0       > ldi							
+1469   4EF3 ED A0       > ldi							
+1469   4EF5 ED A0       > ldi							
+1469   4EF7 ED A0       > ldi							
+1469   4EF9 ED A0       > ldi							
+1469   4EFB ED A0       > ldi							
+1469   4EFD ED A0       > ldi							
+1469   4EFF ED A0       > ldi							
+1469   4F01 ED A0       > ldi							
+1469   4F03 ED A0       > ldi							
+1469   4F05 ED A0       > ldi							
+1469   4F07 ED A0       > ldi							
+1469   4F09 ED A0       > ldi							
+1469   4F0B ED A0       > ldi							
+1469   4F0D ED A0       > ldi							
+1469   4F0F ED A0       > ldi							
+1469   4F11 ED A0       > ldi							
+1469   4F13 ED A0       > ldi							
+1469   4F15 ED A0       > ldi							
+1469   4F17 ED A0       > ldi							
+1469   4F19 ED A0       > ldi							
+1469   4F1B ED A0       > ldi							
+1469   4F1D ED A0       > ldi							
+1469   4F1F ED A0       > ldi							
+1469   4F21 ED A0       > ldi							
+1469   4F23 ED A0       > ldi							
+1469   4F25 ED A0       > ldi							
+1469   4F27 ED A0       > ldi							
+1469   4F29 ED A0       > ldi							
+1469   4F2B ED A0       > ldi							
+1469   4F2D ED A0       > ldi							
+1469   4F2F ED A0       > ldi							
+1469   4F31 ED A0       > ldi							
+1469   4F33 ED A0       > ldi							
+1469   4F35 ED A0       > ldi							
+1469   4F37 ED A0       > ldi							
+1469   4F39 ED A0       > ldi							
+1469   4F3B ED A0       > ldi							
+1469   4F3D ED A0       > ldi							
+1469   4F3F ED A0       > ldi							
+1469   4F41 ED A0       > ldi							
+1469   4F43 ED A0       > ldi							
+1469   4F45 ED A0       > ldi							
+1469   4F47 ED A0       > ldi							
+1469   4F49 ED A0       > ldi							
+1469   4F4B ED A0       > ldi							
+1469   4F4D ED A0       > ldi							
+1469   4F4F ED A0       > ldi							
+1469   4F51 ED A0       > ldi							
+1469   4F53 ED A0       > ldi							
+1469   4F55 ED A0       > ldi							
+1469   4F57 ED A0       > ldi							
+1469   4F59 ED A0       > ldi							
+1469   4F5B ED A0       > ldi							
+1469   4F5D ED A0       > ldi							
+1469   4F5F ED A0       > ldi							
+1469   4F61 ED A0       > ldi							
+1469   4F63 ED A0       > ldi							
+1469   4F65 ED A0       > ldi							
+1469   4F67 ED A0       > ldi							
+1469   4F69 ED A0       > ldi							
+1469   4F6B ED A0       > ldi							
+1469   4F6D ED A0       > ldi							
+1469   4F6F ED A0       > ldi							
+1469   4F71 ED A0       > ldi							
+1469   4F73 ED A0       > ldi							
+1469   4F75 ED A0       > ldi							
+1469   4F77 ED A0       > ldi							
+1469   4F79 ED A0       > ldi							
+1469   4F7B ED A0       > ldi							
+1469   4F7D ED A0       > ldi							
+1469   4F7F ED A0       > ldi							
+1469   4F81 ED A0       > ldi							
+1469   4F83 ED A0       > ldi							
+1469   4F85 ED A0       > ldi							
+1469   4F87 ED A0       > ldi							
+1469   4F89 ED A0       > ldi							
+1469   4F8B ED A0       > ldi							
+1469   4F8D ED A0       > ldi							
+1469   4F8F ED A0       > ldi							
+1469   4F91 ED A0       > ldi							
+1469   4F93 ED A0       > ldi							
+1469   4F95 ED A0       > ldi							
+1469   4F97 ED A0       > ldi							
+1469   4F99 ED A0       > ldi							
+1469   4F9B ED A0       > ldi							
+1469   4F9D ED A0       > ldi							
+1469   4F9F ED A0       > ldi							
+1469   4FA1 ED A0       > ldi							
+1469   4FA3 ED A0       > ldi							
+1469   4FA5 ED A0       > ldi							
+1469   4FA7 ED A0       > ldi							
+1469   4FA9 ED A0       > ldi							
+1469   4FAB ED A0       > ldi							
+1469   4FAD ED A0       > ldi							
+1469   4FAF ED A0       > ldi							
+1469   4FB1 ED A0       > ldi							
+1469   4FB3 ED A0       > ldi							
+1469   4FB5 ED A0       > ldi							
+1469   4FB7 ED A0       > ldi							
+1469   4FB9 ED A0       > ldi							
+1469   4FBB ED A0       > ldi							
+1469   4FBD ED A0       > ldi							
+1469   4FBF ED A0       > ldi							
+1469   4FC1 ED A0       > ldi							
+1469   4FC3 ED A0       > ldi							
+1469   4FC5 ED A0       > ldi							
+1469   4FC7 ED A0       > ldi							
+1469   4FC9 ED A0       > ldi							
+1469   4FCB ED A0       > ldi							
+1469   4FCD ED A0       > ldi							
+1469   4FCF ED A0       > ldi							
+1469   4FD1 ED A0       > ldi							
+1469   4FD3 ED A0       > ldi							
+1469   4FD5 ED A0       > ldi							
+1469   4FD7 ED A0       > ldi							
+1469   4FD9 ED A0       > ldi							
+1469   4FDB ED A0       > ldi							
+1469   4FDD ED A0       > ldi							
+1469   4FDF ED A0       > ldi							
+1469   4FE1 ED A0       > ldi							
+1469   4FE3 ED A0       > ldi							
+1469   4FE5 ED A0       > ldi							
+1469   4FE7 ED A0       > ldi							
+1469   4FE9 ED A0       > ldi							
+1469   4FEB ED A0       > ldi							
+1469   4FED ED A0       > ldi							
+1469   4FEF ED A0       > ldi							
+1469   4FF1 ED A0       > ldi							
+1469   4FF3 ED A0       > ldi							
+1469   4FF5 ED A0       > ldi							
+1469   4FF7 ED A0       > ldi							
+1469   4FF9 ED A0       > ldi							
+1469   4FFB ED A0       > ldi							
+1469   4FFD ED A0       > ldi							
+1469   4FFF ED A0       > ldi							
+1469   5001 ED A0       > ldi							
+1469   5003 ED A0       > ldi							
+1469   5005 ED A0       > ldi							
+1469   5007 ED A0       > ldi							
+1469   5009 ED A0       > ldi							
+1469   500B ED A0       > ldi							
+1469   500D ED A0       > ldi							
+1469   500F ED A0       > ldi							
+1469   5011 ED A0       > ldi							
+1469   5013 ED A0       > ldi							
+1469   5015 ED A0       > ldi							
+1469   5017 ED A0       > ldi							
+1469   5019 ED A0       > ldi							
+1469   501B ED A0       > ldi							
+1469   501D ED A0       > ldi							
+1469   501F ED A0       > ldi							
+1469   5021 ED A0       > ldi							
+1469   5023 ED A0       > ldi							
+1469   5025 ED A0       > ldi							
+1469   5027 ED A0       > ldi							
+1469   5029 ED A0       > ldi							
+1469   502B ED A0       > ldi							
+1469   502D ED A0       > ldi							
+1469   502F ED A0       > ldi							
+1469   5031 ED A0       > ldi							
+1469   5033 ED A0       > ldi							
+1469   5035 ED A0       > ldi							
+1469   5037 ED A0       > ldi							
+1469   5039 ED A0       > ldi							
+1469   503B ED A0       > ldi							
+1469   503D ED A0       > ldi							
+1469   503F ED A0       > ldi							
+1469   5041 ED A0       > ldi							
+1469   5043 ED A0       > ldi							
+1469   5045 ED A0       > ldi							
+1469   5047 ED A0       > ldi							
+1469   5049 ED A0       > ldi							
+1469   504B ED A0       > ldi							
+1469   504D ED A0       > ldi							
+1469   504F ED A0       > ldi							
+1469   5051 ED A0       > ldi							
+1469   5053 ED A0       > ldi							
+1469   5055 ED A0       > ldi							
+1469   5057 ED A0       > ldi							
+1469   5059 ED A0       > ldi							
+1469   505B ED A0       > ldi							
+1469   505D ED A0       > ldi							
+1469   505F ED A0       > ldi							
+1469   5061 ED A0       > ldi							
+1469   5063 ED A0       > ldi							
+1469   5065 ED A0       > ldi							
+1469   5067 ED A0       > ldi							
+1469   5069 ED A0       > ldi							
+1469   506B ED A0       > ldi							
+1469   506D ED A0       > ldi							
+1469   506F ED A0       > ldi							
+1469   5071 ED A0       > ldi							
+1469   5073 ED A0       > ldi							
+1469   5075 ED A0       > ldi							
+1469   5077 ED A0       > ldi							
+1469   5079 ED A0       > ldi							
+1469   507B ED A0       > ldi							
+1469   507D ED A0       > ldi							
+1469   507F ED A0       > ldi							
+1469   5081 ED A0       > ldi							
+1469   5083 ED A0       > ldi							
+1469   5085 ED A0       > ldi							
+1469   5087 ED A0       > ldi							
+1469   5089 ED A0       > ldi							
+1469   508B ED A0       > ldi							
+1469   508D ED A0       > ldi							
+1469   508F ED A0       > ldi							
+1469   5091 ED A0       > ldi							
+1469   5093 ED A0       > ldi							
+1469   5095 ED A0       > ldi							
+1469   5097 ED A0       > ldi							
+1469   5099 ED A0       > ldi							
+1469   509B ED A0       > ldi							
+1469   509D ED A0       > ldi							
+1469   509F ED A0       > ldi							
+1469   50A1 ED A0       > ldi							
+1469   50A3 ED A0       > ldi							
+1469   50A5 ED A0       > ldi							
+1469   50A7 ED A0       > ldi							
+1469   50A9 ED A0       > ldi							
+1469   50AB ED A0       > ldi							
+1469   50AD ED A0       > ldi							
+1469   50AF ED A0       > ldi							
+1469   50B1 ED A0       > ldi							
+1469   50B3 ED A0       > ldi							
+1469   50B5 ED A0       > ldi							
+1469   50B7 ED A0       > ldi							
+1469   50B9 ED A0       > ldi							
+1469   50BB ED A0       > ldi							
+1469   50BD ED A0       > ldi							
+1469   50BF ED A0       > ldi							
+1469   50C1 ED A0       > ldi							
+1469   50C3 ED A0       > ldi							
+1469   50C5 ED A0       > ldi							
+1469   50C7 ED A0       > ldi							
+1469   50C9 ED A0       > ldi							
+1469   50CB ED A0       > ldi							
+1469   50CD ED A0       > ldi							
+1469   50CF ED A0       > ldi							
+1469   50D1 ED A0       > ldi							
+1469   50D3 ED A0       > ldi							
+1469   50D5 ED A0       > ldi							
+1469   50D7 ED A0       > ldi							
+1469   50D9 ED A0       > ldi							
+1469   50DB ED A0       > ldi							
+1469   50DD ED A0       > ldi							
+1469   50DF ED A0       > ldi							
+1469   50E1 ED A0       > ldi							
+1469   50E3 ED A0       > ldi							
+1469   50E5 ED A0       > ldi							
+1469   50E7 ED A0       > ldi							
+1469   50E9 ED A0       > ldi							
+1469   50EB ED A0       > ldi							
+1469   50ED ED A0       > ldi							
+1469   50EF ED A0       > ldi							
+1469   50F1 ED A0       > ldi							
+1469   50F3 ED A0       > ldi							
+1469   50F5 ED A0       > ldi							
+1469   50F7 ED A0       > ldi							
+1469   50F9 ED A0       > ldi							
+1469   50FB ED A0       > ldi							
+1469   50FD ED A0       > ldi							
+1469   50FF ED A0       > ldi							
+1469   5101 ED A0       > ldi							
+1469   5103 ED A0       > ldi							
+1469   5105 ED A0       > ldi							
+1469   5107 ED A0       > ldi							
+1469   5109 ED A0       > ldi							
+1469   510B ED A0       > ldi							
+1469   510D ED A0       > ldi							
+1469   510F ED A0       > ldi							
+1469   5111 ED A0       > ldi							
+1469   5113 ED A0       > ldi							
+1469   5115 ED A0       > ldi							
+1469   5117 ED A0       > ldi							
+1469   5119 ED A0       > ldi							
+1469   511B ED A0       > ldi							
+1470   511D 3E FF       	ld		a, $FF						; envia dummy CRC
+1471   511F 32 00 40    	ld		(PORTSPI),	a
+1472   5122 00          	nop
+1473   5123 32 00 40    	ld		(PORTSPI),	a
+1474   5126 CD B9 4C    	call	WAIT_RESP_NO_FF				; esperar cartao
+1475   5129 E6 1F       	and		$1F							; testa bits erro
+1476   512B FE 05       	cp		5
+1477   512D 20 31       	jr		nz, .erro					; resposta errada, informar erro
+1478   512F CD C8 4C    	call	WAIT_RESP_NO_00				; esperar cartao
+1479   5132 38 2C       	jr		c, .erro
+1480   5134 FD 7E 32    	ld		a, (iy+NUMBLOCOS)			; testar se tem mais blocos para gravar
+1481   5137 3D          	dec		a
+1482   5138 FD 77 32    	ld		(iy+NUMBLOCOS), a
+1483   513B C2 15 4D    	jp		nz, .loop
+1484   513E 3A 00 40    	ld		a, (PORTSPI)				; acabou os blocos, fazer 2 dummy reads
+1485   5141 00          	nop
+1486   5142 3A 00 40    	ld		a, (PORTSPI)
+1487   5145 3E FD       	ld		a, $FD						; enviar $FD para informar ao cartao que acabou os dados
+1488   5147 32 00 40    	ld		(PORTSPI),	a
+1489   514A 00          	nop
+1490   514B 00          	nop
+1491   514C 3A 00 40    	ld		a, (PORTSPI)				; dummy reads
+1492   514F 00          	nop
+1493   5150 3A 00 40    	ld		a, (PORTSPI)
+1494   5153 CD C8 4C    	call	WAIT_RESP_NO_00				; esperar cartao
+1495   5156 C3 85 55    	jp		.fim						; CMD25 concluido, sair informando nenhum erro
+1496   5159             
+1497   5159             .umBloco: 
+1498   5159 3E 58       	ld		a, CMD24					; gravar somente um bloco com comando CMD24 = Write Single Block
+1499   515B CD 4D 4C    	call	SD_SEND_CMD_GET_ERROR
+1500   515E 30 04       	jr		nc, .ok
+1501   5160             .erro: 
+1502   5160 37          	scf									; informar erro
+1503   5161 C3 86 55    	jp		terminaLeituraEscritaBloco
+1504   5164             .ok: 
+1505   5164 3E FE       	ld		a, $FE						; mandar $FE para indicar que vamos mandar dados para gravacao
+1506   5166 32 00 40    	ld		(PORTSPI),	a
+1507   5169 11 00 40    	ld		de, PORTSPI
+1508   516C ED A0       > ldi
+1508   516E ED A0       > ldi
+1508   5170 ED A0       > ldi
+1508   5172 ED A0       > ldi
+1508   5174 ED A0       > ldi
+1508   5176 ED A0       > ldi
+1508   5178 ED A0       > ldi
+1508   517A ED A0       > ldi
+1508   517C ED A0       > ldi
+1508   517E ED A0       > ldi
+1508   5180 ED A0       > ldi
+1508   5182 ED A0       > ldi
+1508   5184 ED A0       > ldi
+1508   5186 ED A0       > ldi
+1508   5188 ED A0       > ldi
+1508   518A ED A0       > ldi
+1508   518C ED A0       > ldi
+1508   518E ED A0       > ldi
+1508   5190 ED A0       > ldi
+1508   5192 ED A0       > ldi
+1508   5194 ED A0       > ldi
+1508   5196 ED A0       > ldi
+1508   5198 ED A0       > ldi
+1508   519A ED A0       > ldi
+1508   519C ED A0       > ldi
+1508   519E ED A0       > ldi
+1508   51A0 ED A0       > ldi
+1508   51A2 ED A0       > ldi
+1508   51A4 ED A0       > ldi
+1508   51A6 ED A0       > ldi
+1508   51A8 ED A0       > ldi
+1508   51AA ED A0       > ldi
+1508   51AC ED A0       > ldi
+1508   51AE ED A0       > ldi
+1508   51B0 ED A0       > ldi
+1508   51B2 ED A0       > ldi
+1508   51B4 ED A0       > ldi
+1508   51B6 ED A0       > ldi
+1508   51B8 ED A0       > ldi
+1508   51BA ED A0       > ldi
+1508   51BC ED A0       > ldi
+1508   51BE ED A0       > ldi
+1508   51C0 ED A0       > ldi
+1508   51C2 ED A0       > ldi
+1508   51C4 ED A0       > ldi
+1508   51C6 ED A0       > ldi
+1508   51C8 ED A0       > ldi
+1508   51CA ED A0       > ldi
+1508   51CC ED A0       > ldi
+1508   51CE ED A0       > ldi
+1508   51D0 ED A0       > ldi
+1508   51D2 ED A0       > ldi
+1508   51D4 ED A0       > ldi
+1508   51D6 ED A0       > ldi
+1508   51D8 ED A0       > ldi
+1508   51DA ED A0       > ldi
+1508   51DC ED A0       > ldi
+1508   51DE ED A0       > ldi
+1508   51E0 ED A0       > ldi
+1508   51E2 ED A0       > ldi
+1508   51E4 ED A0       > ldi
+1508   51E6 ED A0       > ldi
+1508   51E8 ED A0       > ldi
+1508   51EA ED A0       > ldi
+1508   51EC ED A0       > ldi
+1508   51EE ED A0       > ldi
+1508   51F0 ED A0       > ldi
+1508   51F2 ED A0       > ldi
+1508   51F4 ED A0       > ldi
+1508   51F6 ED A0       > ldi
+1508   51F8 ED A0       > ldi
+1508   51FA ED A0       > ldi
+1508   51FC ED A0       > ldi
+1508   51FE ED A0       > ldi
+1508   5200 ED A0       > ldi
+1508   5202 ED A0       > ldi
+1508   5204 ED A0       > ldi
+1508   5206 ED A0       > ldi
+1508   5208 ED A0       > ldi
+1508   520A ED A0       > ldi
+1508   520C ED A0       > ldi
+1508   520E ED A0       > ldi
+1508   5210 ED A0       > ldi
+1508   5212 ED A0       > ldi
+1508   5214 ED A0       > ldi
+1508   5216 ED A0       > ldi
+1508   5218 ED A0       > ldi
+1508   521A ED A0       > ldi
+1508   521C ED A0       > ldi
+1508   521E ED A0       > ldi
+1508   5220 ED A0       > ldi
+1508   5222 ED A0       > ldi
+1508   5224 ED A0       > ldi
+1508   5226 ED A0       > ldi
+1508   5228 ED A0       > ldi
+1508   522A ED A0       > ldi
+1508   522C ED A0       > ldi
+1508   522E ED A0       > ldi
+1508   5230 ED A0       > ldi
+1508   5232 ED A0       > ldi
+1508   5234 ED A0       > ldi
+1508   5236 ED A0       > ldi
+1508   5238 ED A0       > ldi
+1508   523A ED A0       > ldi
+1508   523C ED A0       > ldi
+1508   523E ED A0       > ldi
+1508   5240 ED A0       > ldi
+1508   5242 ED A0       > ldi
+1508   5244 ED A0       > ldi
+1508   5246 ED A0       > ldi
+1508   5248 ED A0       > ldi
+1508   524A ED A0       > ldi
+1508   524C ED A0       > ldi
+1508   524E ED A0       > ldi
+1508   5250 ED A0       > ldi
+1508   5252 ED A0       > ldi
+1508   5254 ED A0       > ldi
+1508   5256 ED A0       > ldi
+1508   5258 ED A0       > ldi
+1508   525A ED A0       > ldi
+1508   525C ED A0       > ldi
+1508   525E ED A0       > ldi
+1508   5260 ED A0       > ldi
+1508   5262 ED A0       > ldi
+1508   5264 ED A0       > ldi
+1508   5266 ED A0       > ldi
+1508   5268 ED A0       > ldi
+1508   526A ED A0       > ldi
+1508   526C ED A0       > ldi
+1508   526E ED A0       > ldi
+1508   5270 ED A0       > ldi
+1508   5272 ED A0       > ldi
+1508   5274 ED A0       > ldi
+1508   5276 ED A0       > ldi
+1508   5278 ED A0       > ldi
+1508   527A ED A0       > ldi
+1508   527C ED A0       > ldi
+1508   527E ED A0       > ldi
+1508   5280 ED A0       > ldi
+1508   5282 ED A0       > ldi
+1508   5284 ED A0       > ldi
+1508   5286 ED A0       > ldi
+1508   5288 ED A0       > ldi
+1508   528A ED A0       > ldi
+1508   528C ED A0       > ldi
+1508   528E ED A0       > ldi
+1508   5290 ED A0       > ldi
+1508   5292 ED A0       > ldi
+1508   5294 ED A0       > ldi
+1508   5296 ED A0       > ldi
+1508   5298 ED A0       > ldi
+1508   529A ED A0       > ldi
+1508   529C ED A0       > ldi
+1508   529E ED A0       > ldi
+1508   52A0 ED A0       > ldi
+1508   52A2 ED A0       > ldi
+1508   52A4 ED A0       > ldi
+1508   52A6 ED A0       > ldi
+1508   52A8 ED A0       > ldi
+1508   52AA ED A0       > ldi
+1508   52AC ED A0       > ldi
+1508   52AE ED A0       > ldi
+1508   52B0 ED A0       > ldi
+1508   52B2 ED A0       > ldi
+1508   52B4 ED A0       > ldi
+1508   52B6 ED A0       > ldi
+1508   52B8 ED A0       > ldi
+1508   52BA ED A0       > ldi
+1508   52BC ED A0       > ldi
+1508   52BE ED A0       > ldi
+1508   52C0 ED A0       > ldi
+1508   52C2 ED A0       > ldi
+1508   52C4 ED A0       > ldi
+1508   52C6 ED A0       > ldi
+1508   52C8 ED A0       > ldi
+1508   52CA ED A0       > ldi
+1508   52CC ED A0       > ldi
+1508   52CE ED A0       > ldi
+1508   52D0 ED A0       > ldi
+1508   52D2 ED A0       > ldi
+1508   52D4 ED A0       > ldi
+1508   52D6 ED A0       > ldi
+1508   52D8 ED A0       > ldi
+1508   52DA ED A0       > ldi
+1508   52DC ED A0       > ldi
+1508   52DE ED A0       > ldi
+1508   52E0 ED A0       > ldi
+1508   52E2 ED A0       > ldi
+1508   52E4 ED A0       > ldi
+1508   52E6 ED A0       > ldi
+1508   52E8 ED A0       > ldi
+1508   52EA ED A0       > ldi
+1508   52EC ED A0       > ldi
+1508   52EE ED A0       > ldi
+1508   52F0 ED A0       > ldi
+1508   52F2 ED A0       > ldi
+1508   52F4 ED A0       > ldi
+1508   52F6 ED A0       > ldi
+1508   52F8 ED A0       > ldi
+1508   52FA ED A0       > ldi
+1508   52FC ED A0       > ldi
+1508   52FE ED A0       > ldi
+1508   5300 ED A0       > ldi
+1508   5302 ED A0       > ldi
+1508   5304 ED A0       > ldi
+1508   5306 ED A0       > ldi
+1508   5308 ED A0       > ldi
+1508   530A ED A0       > ldi
+1508   530C ED A0       > ldi
+1508   530E ED A0       > ldi
+1508   5310 ED A0       > ldi
+1508   5312 ED A0       > ldi
+1508   5314 ED A0       > ldi
+1508   5316 ED A0       > ldi
+1508   5318 ED A0       > ldi
+1508   531A ED A0       > ldi
+1508   531C ED A0       > ldi
+1508   531E ED A0       > ldi
+1508   5320 ED A0       > ldi
+1508   5322 ED A0       > ldi
+1508   5324 ED A0       > ldi
+1508   5326 ED A0       > ldi
+1508   5328 ED A0       > ldi
+1508   532A ED A0       > ldi
+1508   532C ED A0       > ldi
+1508   532E ED A0       > ldi
+1508   5330 ED A0       > ldi
+1508   5332 ED A0       > ldi
+1508   5334 ED A0       > ldi
+1508   5336 ED A0       > ldi
+1508   5338 ED A0       > ldi
+1508   533A ED A0       > ldi
+1508   533C ED A0       > ldi
+1508   533E ED A0       > ldi
+1508   5340 ED A0       > ldi
+1508   5342 ED A0       > ldi
+1508   5344 ED A0       > ldi
+1508   5346 ED A0       > ldi
+1508   5348 ED A0       > ldi
+1508   534A ED A0       > ldi
+1508   534C ED A0       > ldi
+1508   534E ED A0       > ldi
+1508   5350 ED A0       > ldi
+1508   5352 ED A0       > ldi
+1508   5354 ED A0       > ldi
+1508   5356 ED A0       > ldi
+1508   5358 ED A0       > ldi
+1508   535A ED A0       > ldi
+1508   535C ED A0       > ldi
+1508   535E ED A0       > ldi
+1508   5360 ED A0       > ldi
+1508   5362 ED A0       > ldi
+1508   5364 ED A0       > ldi
+1508   5366 ED A0       > ldi
+1508   5368 ED A0       > ldi
+1508   536A ED A0       > ldi
+1508   536C ED A0       > ldi
+1508   536E ED A0       > ldi
+1508   5370 ED A0       > ldi
+1508   5372 ED A0       > ldi
+1508   5374 ED A0       > ldi
+1508   5376 ED A0       > ldi
+1508   5378 ED A0       > ldi
+1508   537A ED A0       > ldi
+1508   537C ED A0       > ldi
+1508   537E ED A0       > ldi
+1508   5380 ED A0       > ldi
+1508   5382 ED A0       > ldi
+1508   5384 ED A0       > ldi
+1508   5386 ED A0       > ldi
+1508   5388 ED A0       > ldi
+1508   538A ED A0       > ldi
+1508   538C ED A0       > ldi
+1508   538E ED A0       > ldi
+1508   5390 ED A0       > ldi
+1508   5392 ED A0       > ldi
+1508   5394 ED A0       > ldi
+1508   5396 ED A0       > ldi
+1508   5398 ED A0       > ldi
+1508   539A ED A0       > ldi
+1508   539C ED A0       > ldi
+1508   539E ED A0       > ldi
+1508   53A0 ED A0       > ldi
+1508   53A2 ED A0       > ldi
+1508   53A4 ED A0       > ldi
+1508   53A6 ED A0       > ldi
+1508   53A8 ED A0       > ldi
+1508   53AA ED A0       > ldi
+1508   53AC ED A0       > ldi
+1508   53AE ED A0       > ldi
+1508   53B0 ED A0       > ldi
+1508   53B2 ED A0       > ldi
+1508   53B4 ED A0       > ldi
+1508   53B6 ED A0       > ldi
+1508   53B8 ED A0       > ldi
+1508   53BA ED A0       > ldi
+1508   53BC ED A0       > ldi
+1508   53BE ED A0       > ldi
+1508   53C0 ED A0       > ldi
+1508   53C2 ED A0       > ldi
+1508   53C4 ED A0       > ldi
+1508   53C6 ED A0       > ldi
+1508   53C8 ED A0       > ldi
+1508   53CA ED A0       > ldi
+1508   53CC ED A0       > ldi
+1508   53CE ED A0       > ldi
+1508   53D0 ED A0       > ldi
+1508   53D2 ED A0       > ldi
+1508   53D4 ED A0       > ldi
+1508   53D6 ED A0       > ldi
+1508   53D8 ED A0       > ldi
+1508   53DA ED A0       > ldi
+1508   53DC ED A0       > ldi
+1508   53DE ED A0       > ldi
+1508   53E0 ED A0       > ldi
+1508   53E2 ED A0       > ldi
+1508   53E4 ED A0       > ldi
+1508   53E6 ED A0       > ldi
+1508   53E8 ED A0       > ldi
+1508   53EA ED A0       > ldi
+1508   53EC ED A0       > ldi
+1508   53EE ED A0       > ldi
+1508   53F0 ED A0       > ldi
+1508   53F2 ED A0       > ldi
+1508   53F4 ED A0       > ldi
+1508   53F6 ED A0       > ldi
+1508   53F8 ED A0       > ldi
+1508   53FA ED A0       > ldi
+1508   53FC ED A0       > ldi
+1508   53FE ED A0       > ldi
+1508   5400 ED A0       > ldi
+1508   5402 ED A0       > ldi
+1508   5404 ED A0       > ldi
+1508   5406 ED A0       > ldi
+1508   5408 ED A0       > ldi
+1508   540A ED A0       > ldi
+1508   540C ED A0       > ldi
+1508   540E ED A0       > ldi
+1508   5410 ED A0       > ldi
+1508   5412 ED A0       > ldi
+1508   5414 ED A0       > ldi
+1508   5416 ED A0       > ldi
+1508   5418 ED A0       > ldi
+1508   541A ED A0       > ldi
+1508   541C ED A0       > ldi
+1508   541E ED A0       > ldi
+1508   5420 ED A0       > ldi
+1508   5422 ED A0       > ldi
+1508   5424 ED A0       > ldi
+1508   5426 ED A0       > ldi
+1508   5428 ED A0       > ldi
+1508   542A ED A0       > ldi
+1508   542C ED A0       > ldi
+1508   542E ED A0       > ldi
+1508   5430 ED A0       > ldi
+1508   5432 ED A0       > ldi
+1508   5434 ED A0       > ldi
+1508   5436 ED A0       > ldi
+1508   5438 ED A0       > ldi
+1508   543A ED A0       > ldi
+1508   543C ED A0       > ldi
+1508   543E ED A0       > ldi
+1508   5440 ED A0       > ldi
+1508   5442 ED A0       > ldi
+1508   5444 ED A0       > ldi
+1508   5446 ED A0       > ldi
+1508   5448 ED A0       > ldi
+1508   544A ED A0       > ldi
+1508   544C ED A0       > ldi
+1508   544E ED A0       > ldi
+1508   5450 ED A0       > ldi
+1508   5452 ED A0       > ldi
+1508   5454 ED A0       > ldi
+1508   5456 ED A0       > ldi
+1508   5458 ED A0       > ldi
+1508   545A ED A0       > ldi
+1508   545C ED A0       > ldi
+1508   545E ED A0       > ldi
+1508   5460 ED A0       > ldi
+1508   5462 ED A0       > ldi
+1508   5464 ED A0       > ldi
+1508   5466 ED A0       > ldi
+1508   5468 ED A0       > ldi
+1508   546A ED A0       > ldi
+1508   546C ED A0       > ldi
+1508   546E ED A0       > ldi
+1508   5470 ED A0       > ldi
+1508   5472 ED A0       > ldi
+1508   5474 ED A0       > ldi
+1508   5476 ED A0       > ldi
+1508   5478 ED A0       > ldi
+1508   547A ED A0       > ldi
+1508   547C ED A0       > ldi
+1508   547E ED A0       > ldi
+1508   5480 ED A0       > ldi
+1508   5482 ED A0       > ldi
+1508   5484 ED A0       > ldi
+1508   5486 ED A0       > ldi
+1508   5488 ED A0       > ldi
+1508   548A ED A0       > ldi
+1508   548C ED A0       > ldi
+1508   548E ED A0       > ldi
+1508   5490 ED A0       > ldi
+1508   5492 ED A0       > ldi
+1508   5494 ED A0       > ldi
+1508   5496 ED A0       > ldi
+1508   5498 ED A0       > ldi
+1508   549A ED A0       > ldi
+1508   549C ED A0       > ldi
+1508   549E ED A0       > ldi
+1508   54A0 ED A0       > ldi
+1508   54A2 ED A0       > ldi
+1508   54A4 ED A0       > ldi
+1508   54A6 ED A0       > ldi
+1508   54A8 ED A0       > ldi
+1508   54AA ED A0       > ldi
+1508   54AC ED A0       > ldi
+1508   54AE ED A0       > ldi
+1508   54B0 ED A0       > ldi
+1508   54B2 ED A0       > ldi
+1508   54B4 ED A0       > ldi
+1508   54B6 ED A0       > ldi
+1508   54B8 ED A0       > ldi
+1508   54BA ED A0       > ldi
+1508   54BC ED A0       > ldi
+1508   54BE ED A0       > ldi
+1508   54C0 ED A0       > ldi
+1508   54C2 ED A0       > ldi
+1508   54C4 ED A0       > ldi
+1508   54C6 ED A0       > ldi
+1508   54C8 ED A0       > ldi
+1508   54CA ED A0       > ldi
+1508   54CC ED A0       > ldi
+1508   54CE ED A0       > ldi
+1508   54D0 ED A0       > ldi
+1508   54D2 ED A0       > ldi
+1508   54D4 ED A0       > ldi
+1508   54D6 ED A0       > ldi
+1508   54D8 ED A0       > ldi
+1508   54DA ED A0       > ldi
+1508   54DC ED A0       > ldi
+1508   54DE ED A0       > ldi
+1508   54E0 ED A0       > ldi
+1508   54E2 ED A0       > ldi
+1508   54E4 ED A0       > ldi
+1508   54E6 ED A0       > ldi
+1508   54E8 ED A0       > ldi
+1508   54EA ED A0       > ldi
+1508   54EC ED A0       > ldi
+1508   54EE ED A0       > ldi
+1508   54F0 ED A0       > ldi
+1508   54F2 ED A0       > ldi
+1508   54F4 ED A0       > ldi
+1508   54F6 ED A0       > ldi
+1508   54F8 ED A0       > ldi
+1508   54FA ED A0       > ldi
+1508   54FC ED A0       > ldi
+1508   54FE ED A0       > ldi
+1508   5500 ED A0       > ldi
+1508   5502 ED A0       > ldi
+1508   5504 ED A0       > ldi
+1508   5506 ED A0       > ldi
+1508   5508 ED A0       > ldi
+1508   550A ED A0       > ldi
+1508   550C ED A0       > ldi
+1508   550E ED A0       > ldi
+1508   5510 ED A0       > ldi
+1508   5512 ED A0       > ldi
+1508   5514 ED A0       > ldi
+1508   5516 ED A0       > ldi
+1508   5518 ED A0       > ldi
+1508   551A ED A0       > ldi
+1508   551C ED A0       > ldi
+1508   551E ED A0       > ldi
+1508   5520 ED A0       > ldi
+1508   5522 ED A0       > ldi
+1508   5524 ED A0       > ldi
+1508   5526 ED A0       > ldi
+1508   5528 ED A0       > ldi
+1508   552A ED A0       > ldi
+1508   552C ED A0       > ldi
+1508   552E ED A0       > ldi
+1508   5530 ED A0       > ldi
+1508   5532 ED A0       > ldi
+1508   5534 ED A0       > ldi
+1508   5536 ED A0       > ldi
+1508   5538 ED A0       > ldi
+1508   553A ED A0       > ldi
+1508   553C ED A0       > ldi
+1508   553E ED A0       > ldi
+1508   5540 ED A0       > ldi
+1508   5542 ED A0       > ldi
+1508   5544 ED A0       > ldi
+1508   5546 ED A0       > ldi
+1508   5548 ED A0       > ldi
+1508   554A ED A0       > ldi
+1508   554C ED A0       > ldi
+1508   554E ED A0       > ldi
+1508   5550 ED A0       > ldi
+1508   5552 ED A0       > ldi
+1508   5554 ED A0       > ldi
+1508   5556 ED A0       > ldi
+1508   5558 ED A0       > ldi
+1508   555A ED A0       > ldi
+1508   555C ED A0       > ldi
+1508   555E ED A0       > ldi
+1508   5560 ED A0       > ldi
+1508   5562 ED A0       > ldi
+1508   5564 ED A0       > ldi
+1508   5566 ED A0       > ldi
+1508   5568 ED A0       > ldi
+1508   556A ED A0       > ldi
+1509   556C 3E FF       	ld		a, $FF						; envia dummy CRC
+1510   556E 32 00 40    	ld		(PORTSPI),	a
+1511   5571 00          	nop
+1512   5572 32 00 40    	ld		(PORTSPI),	a
+1513   5575 CD B9 4C    	call	WAIT_RESP_NO_FF				; esperar cartao
+1514   5578 E6 1F       	and		$1F							; testa bits erro
+1515   557A FE 05       	cp		5
+1516   557C C2 60 51    	jp		nz, .erro					; resposta errada, informar erro
+1517   557F             .esp: 
+1518   557F CD B9 4C    	call	WAIT_RESP_NO_FF				; esperar cartao
+1519   5582 B7          	or		a
+1520   5583 28 FA       	jr		z, .esp
+1521   5585             .fim: 
+1522   5585 AF          	xor		a							; zera carry e informa nenhum erro
+1523   5586             terminaLeituraEscritaBloco: 
+1524   5586 F5          	push	af
+1525   5587 CD 3E 4C    	call	desabilitaSDs				; desabilitar todos os cartoes
+1526   558A F1          	pop		af
+1527   558B C9          	ret
+1528   558C             
+1529   558C             ; ------------------------------------------------
+1530   558C             ; Ler um bloco de 512 bytes do cartao
+1531   558C             ; HL aponta para o inicio dos dados
+1532   558C             ; BC e DE contem o numero do bloco (BCDE = 32 bits)
+1533   558C             ; Destroi AF, BC, DE, HL
+1534   558C             ; ------------------------------------------------
+1535   558C             LerBloco: 
+1536   558C DD 7E 0F    	ld		a, (ix+15)					; verificar se eh SDV1 ou SDV2
+1537   558F B7          	or		a
+1538   5590 CC EB 5D    	call	z, blocoParaByte			; se for SDV1 coverter blocos para bytes
+1539   5593 CD D7 4C    	call	setaSDAtual
+1540   5596 FD 7E 32    	ld		a, (iy+NUMBLOCOS)			; testar se Nextor quer ler um ou mais blocos
+1541   5599 3D          	dec		a
+1542   559A CA CA 59    	jp		z, .umBloco					; somente um bloco, pular
+1543   559D             
+1544   559D             ; multiplos blocos
+1545   559D 3E 52       	ld		a, CMD18					; ler multiplos blocos com CMD18 = Read Multiple Blocks
+1546   559F CD 4D 4C    	call	SD_SEND_CMD_GET_ERROR
+1547   55A2 DA D1 59    	jp		c, .erro
+1548   55A5             .loop: 
+1549   55A5 CD AB 4C    	call	WAIT_RESP_FE
+1550   55A8 DA D1 59    	jp		c, .erro
+1551   55AB 11 00 40    	ld		de, PORTSPI
+1552   55AE EB          	ex		hl, de
+1553   55AF ED A0       > ldi
+1553   55B1 ED A0       > ldi
+1553   55B3 ED A0       > ldi
+1553   55B5 ED A0       > ldi
+1553   55B7 ED A0       > ldi
+1553   55B9 ED A0       > ldi
+1553   55BB ED A0       > ldi
+1553   55BD ED A0       > ldi
+1553   55BF ED A0       > ldi
+1553   55C1 ED A0       > ldi
+1553   55C3 ED A0       > ldi
+1553   55C5 ED A0       > ldi
+1553   55C7 ED A0       > ldi
+1553   55C9 ED A0       > ldi
+1553   55CB ED A0       > ldi
+1553   55CD ED A0       > ldi
+1553   55CF ED A0       > ldi
+1553   55D1 ED A0       > ldi
+1553   55D3 ED A0       > ldi
+1553   55D5 ED A0       > ldi
+1553   55D7 ED A0       > ldi
+1553   55D9 ED A0       > ldi
+1553   55DB ED A0       > ldi
+1553   55DD ED A0       > ldi
+1553   55DF ED A0       > ldi
+1553   55E1 ED A0       > ldi
+1553   55E3 ED A0       > ldi
+1553   55E5 ED A0       > ldi
+1553   55E7 ED A0       > ldi
+1553   55E9 ED A0       > ldi
+1553   55EB ED A0       > ldi
+1553   55ED ED A0       > ldi
+1553   55EF ED A0       > ldi
+1553   55F1 ED A0       > ldi
+1553   55F3 ED A0       > ldi
+1553   55F5 ED A0       > ldi
+1553   55F7 ED A0       > ldi
+1553   55F9 ED A0       > ldi
+1553   55FB ED A0       > ldi
+1553   55FD ED A0       > ldi
+1553   55FF ED A0       > ldi
+1553   5601 ED A0       > ldi
+1553   5603 ED A0       > ldi
+1553   5605 ED A0       > ldi
+1553   5607 ED A0       > ldi
+1553   5609 ED A0       > ldi
+1553   560B ED A0       > ldi
+1553   560D ED A0       > ldi
+1553   560F ED A0       > ldi
+1553   5611 ED A0       > ldi
+1553   5613 ED A0       > ldi
+1553   5615 ED A0       > ldi
+1553   5617 ED A0       > ldi
+1553   5619 ED A0       > ldi
+1553   561B ED A0       > ldi
+1553   561D ED A0       > ldi
+1553   561F ED A0       > ldi
+1553   5621 ED A0       > ldi
+1553   5623 ED A0       > ldi
+1553   5625 ED A0       > ldi
+1553   5627 ED A0       > ldi
+1553   5629 ED A0       > ldi
+1553   562B ED A0       > ldi
+1553   562D ED A0       > ldi
+1553   562F ED A0       > ldi
+1553   5631 ED A0       > ldi
+1553   5633 ED A0       > ldi
+1553   5635 ED A0       > ldi
+1553   5637 ED A0       > ldi
+1553   5639 ED A0       > ldi
+1553   563B ED A0       > ldi
+1553   563D ED A0       > ldi
+1553   563F ED A0       > ldi
+1553   5641 ED A0       > ldi
+1553   5643 ED A0       > ldi
+1553   5645 ED A0       > ldi
+1553   5647 ED A0       > ldi
+1553   5649 ED A0       > ldi
+1553   564B ED A0       > ldi
+1553   564D ED A0       > ldi
+1553   564F ED A0       > ldi
+1553   5651 ED A0       > ldi
+1553   5653 ED A0       > ldi
+1553   5655 ED A0       > ldi
+1553   5657 ED A0       > ldi
+1553   5659 ED A0       > ldi
+1553   565B ED A0       > ldi
+1553   565D ED A0       > ldi
+1553   565F ED A0       > ldi
+1553   5661 ED A0       > ldi
+1553   5663 ED A0       > ldi
+1553   5665 ED A0       > ldi
+1553   5667 ED A0       > ldi
+1553   5669 ED A0       > ldi
+1553   566B ED A0       > ldi
+1553   566D ED A0       > ldi
+1553   566F ED A0       > ldi
+1553   5671 ED A0       > ldi
+1553   5673 ED A0       > ldi
+1553   5675 ED A0       > ldi
+1553   5677 ED A0       > ldi
+1553   5679 ED A0       > ldi
+1553   567B ED A0       > ldi
+1553   567D ED A0       > ldi
+1553   567F ED A0       > ldi
+1553   5681 ED A0       > ldi
+1553   5683 ED A0       > ldi
+1553   5685 ED A0       > ldi
+1553   5687 ED A0       > ldi
+1553   5689 ED A0       > ldi
+1553   568B ED A0       > ldi
+1553   568D ED A0       > ldi
+1553   568F ED A0       > ldi
+1553   5691 ED A0       > ldi
+1553   5693 ED A0       > ldi
+1553   5695 ED A0       > ldi
+1553   5697 ED A0       > ldi
+1553   5699 ED A0       > ldi
+1553   569B ED A0       > ldi
+1553   569D ED A0       > ldi
+1553   569F ED A0       > ldi
+1553   56A1 ED A0       > ldi
+1553   56A3 ED A0       > ldi
+1553   56A5 ED A0       > ldi
+1553   56A7 ED A0       > ldi
+1553   56A9 ED A0       > ldi
+1553   56AB ED A0       > ldi
+1553   56AD ED A0       > ldi
+1553   56AF ED A0       > ldi
+1553   56B1 ED A0       > ldi
+1553   56B3 ED A0       > ldi
+1553   56B5 ED A0       > ldi
+1553   56B7 ED A0       > ldi
+1553   56B9 ED A0       > ldi
+1553   56BB ED A0       > ldi
+1553   56BD ED A0       > ldi
+1553   56BF ED A0       > ldi
+1553   56C1 ED A0       > ldi
+1553   56C3 ED A0       > ldi
+1553   56C5 ED A0       > ldi
+1553   56C7 ED A0       > ldi
+1553   56C9 ED A0       > ldi
+1553   56CB ED A0       > ldi
+1553   56CD ED A0       > ldi
+1553   56CF ED A0       > ldi
+1553   56D1 ED A0       > ldi
+1553   56D3 ED A0       > ldi
+1553   56D5 ED A0       > ldi
+1553   56D7 ED A0       > ldi
+1553   56D9 ED A0       > ldi
+1553   56DB ED A0       > ldi
+1553   56DD ED A0       > ldi
+1553   56DF ED A0       > ldi
+1553   56E1 ED A0       > ldi
+1553   56E3 ED A0       > ldi
+1553   56E5 ED A0       > ldi
+1553   56E7 ED A0       > ldi
+1553   56E9 ED A0       > ldi
+1553   56EB ED A0       > ldi
+1553   56ED ED A0       > ldi
+1553   56EF ED A0       > ldi
+1553   56F1 ED A0       > ldi
+1553   56F3 ED A0       > ldi
+1553   56F5 ED A0       > ldi
+1553   56F7 ED A0       > ldi
+1553   56F9 ED A0       > ldi
+1553   56FB ED A0       > ldi
+1553   56FD ED A0       > ldi
+1553   56FF ED A0       > ldi
+1553   5701 ED A0       > ldi
+1553   5703 ED A0       > ldi
+1553   5705 ED A0       > ldi
+1553   5707 ED A0       > ldi
+1553   5709 ED A0       > ldi
+1553   570B ED A0       > ldi
+1553   570D ED A0       > ldi
+1553   570F ED A0       > ldi
+1553   5711 ED A0       > ldi
+1553   5713 ED A0       > ldi
+1553   5715 ED A0       > ldi
+1553   5717 ED A0       > ldi
+1553   5719 ED A0       > ldi
+1553   571B ED A0       > ldi
+1553   571D ED A0       > ldi
+1553   571F ED A0       > ldi
+1553   5721 ED A0       > ldi
+1553   5723 ED A0       > ldi
+1553   5725 ED A0       > ldi
+1553   5727 ED A0       > ldi
+1553   5729 ED A0       > ldi
+1553   572B ED A0       > ldi
+1553   572D ED A0       > ldi
+1553   572F ED A0       > ldi
+1553   5731 ED A0       > ldi
+1553   5733 ED A0       > ldi
+1553   5735 ED A0       > ldi
+1553   5737 ED A0       > ldi
+1553   5739 ED A0       > ldi
+1553   573B ED A0       > ldi
+1553   573D ED A0       > ldi
+1553   573F ED A0       > ldi
+1553   5741 ED A0       > ldi
+1553   5743 ED A0       > ldi
+1553   5745 ED A0       > ldi
+1553   5747 ED A0       > ldi
+1553   5749 ED A0       > ldi
+1553   574B ED A0       > ldi
+1553   574D ED A0       > ldi
+1553   574F ED A0       > ldi
+1553   5751 ED A0       > ldi
+1553   5753 ED A0       > ldi
+1553   5755 ED A0       > ldi
+1553   5757 ED A0       > ldi
+1553   5759 ED A0       > ldi
+1553   575B ED A0       > ldi
+1553   575D ED A0       > ldi
+1553   575F ED A0       > ldi
+1553   5761 ED A0       > ldi
+1553   5763 ED A0       > ldi
+1553   5765 ED A0       > ldi
+1553   5767 ED A0       > ldi
+1553   5769 ED A0       > ldi
+1553   576B ED A0       > ldi
+1553   576D ED A0       > ldi
+1553   576F ED A0       > ldi
+1553   5771 ED A0       > ldi
+1553   5773 ED A0       > ldi
+1553   5775 ED A0       > ldi
+1553   5777 ED A0       > ldi
+1553   5779 ED A0       > ldi
+1553   577B ED A0       > ldi
+1553   577D ED A0       > ldi
+1553   577F ED A0       > ldi
+1553   5781 ED A0       > ldi
+1553   5783 ED A0       > ldi
+1553   5785 ED A0       > ldi
+1553   5787 ED A0       > ldi
+1553   5789 ED A0       > ldi
+1553   578B ED A0       > ldi
+1553   578D ED A0       > ldi
+1553   578F ED A0       > ldi
+1553   5791 ED A0       > ldi
+1553   5793 ED A0       > ldi
+1553   5795 ED A0       > ldi
+1553   5797 ED A0       > ldi
+1553   5799 ED A0       > ldi
+1553   579B ED A0       > ldi
+1553   579D ED A0       > ldi
+1553   579F ED A0       > ldi
+1553   57A1 ED A0       > ldi
+1553   57A3 ED A0       > ldi
+1553   57A5 ED A0       > ldi
+1553   57A7 ED A0       > ldi
+1553   57A9 ED A0       > ldi
+1553   57AB ED A0       > ldi
+1553   57AD ED A0       > ldi
+1553   57AF ED A0       > ldi
+1553   57B1 ED A0       > ldi
+1553   57B3 ED A0       > ldi
+1553   57B5 ED A0       > ldi
+1553   57B7 ED A0       > ldi
+1553   57B9 ED A0       > ldi
+1553   57BB ED A0       > ldi
+1553   57BD ED A0       > ldi
+1553   57BF ED A0       > ldi
+1553   57C1 ED A0       > ldi
+1553   57C3 ED A0       > ldi
+1553   57C5 ED A0       > ldi
+1553   57C7 ED A0       > ldi
+1553   57C9 ED A0       > ldi
+1553   57CB ED A0       > ldi
+1553   57CD ED A0       > ldi
+1553   57CF ED A0       > ldi
+1553   57D1 ED A0       > ldi
+1553   57D3 ED A0       > ldi
+1553   57D5 ED A0       > ldi
+1553   57D7 ED A0       > ldi
+1553   57D9 ED A0       > ldi
+1553   57DB ED A0       > ldi
+1553   57DD ED A0       > ldi
+1553   57DF ED A0       > ldi
+1553   57E1 ED A0       > ldi
+1553   57E3 ED A0       > ldi
+1553   57E5 ED A0       > ldi
+1553   57E7 ED A0       > ldi
+1553   57E9 ED A0       > ldi
+1553   57EB ED A0       > ldi
+1553   57ED ED A0       > ldi
+1553   57EF ED A0       > ldi
+1553   57F1 ED A0       > ldi
+1553   57F3 ED A0       > ldi
+1553   57F5 ED A0       > ldi
+1553   57F7 ED A0       > ldi
+1553   57F9 ED A0       > ldi
+1553   57FB ED A0       > ldi
+1553   57FD ED A0       > ldi
+1553   57FF ED A0       > ldi
+1553   5801 ED A0       > ldi
+1553   5803 ED A0       > ldi
+1553   5805 ED A0       > ldi
+1553   5807 ED A0       > ldi
+1553   5809 ED A0       > ldi
+1553   580B ED A0       > ldi
+1553   580D ED A0       > ldi
+1553   580F ED A0       > ldi
+1553   5811 ED A0       > ldi
+1553   5813 ED A0       > ldi
+1553   5815 ED A0       > ldi
+1553   5817 ED A0       > ldi
+1553   5819 ED A0       > ldi
+1553   581B ED A0       > ldi
+1553   581D ED A0       > ldi
+1553   581F ED A0       > ldi
+1553   5821 ED A0       > ldi
+1553   5823 ED A0       > ldi
+1553   5825 ED A0       > ldi
+1553   5827 ED A0       > ldi
+1553   5829 ED A0       > ldi
+1553   582B ED A0       > ldi
+1553   582D ED A0       > ldi
+1553   582F ED A0       > ldi
+1553   5831 ED A0       > ldi
+1553   5833 ED A0       > ldi
+1553   5835 ED A0       > ldi
+1553   5837 ED A0       > ldi
+1553   5839 ED A0       > ldi
+1553   583B ED A0       > ldi
+1553   583D ED A0       > ldi
+1553   583F ED A0       > ldi
+1553   5841 ED A0       > ldi
+1553   5843 ED A0       > ldi
+1553   5845 ED A0       > ldi
+1553   5847 ED A0       > ldi
+1553   5849 ED A0       > ldi
+1553   584B ED A0       > ldi
+1553   584D ED A0       > ldi
+1553   584F ED A0       > ldi
+1553   5851 ED A0       > ldi
+1553   5853 ED A0       > ldi
+1553   5855 ED A0       > ldi
+1553   5857 ED A0       > ldi
+1553   5859 ED A0       > ldi
+1553   585B ED A0       > ldi
+1553   585D ED A0       > ldi
+1553   585F ED A0       > ldi
+1553   5861 ED A0       > ldi
+1553   5863 ED A0       > ldi
+1553   5865 ED A0       > ldi
+1553   5867 ED A0       > ldi
+1553   5869 ED A0       > ldi
+1553   586B ED A0       > ldi
+1553   586D ED A0       > ldi
+1553   586F ED A0       > ldi
+1553   5871 ED A0       > ldi
+1553   5873 ED A0       > ldi
+1553   5875 ED A0       > ldi
+1553   5877 ED A0       > ldi
+1553   5879 ED A0       > ldi
+1553   587B ED A0       > ldi
+1553   587D ED A0       > ldi
+1553   587F ED A0       > ldi
+1553   5881 ED A0       > ldi
+1553   5883 ED A0       > ldi
+1553   5885 ED A0       > ldi
+1553   5887 ED A0       > ldi
+1553   5889 ED A0       > ldi
+1553   588B ED A0       > ldi
+1553   588D ED A0       > ldi
+1553   588F ED A0       > ldi
+1553   5891 ED A0       > ldi
+1553   5893 ED A0       > ldi
+1553   5895 ED A0       > ldi
+1553   5897 ED A0       > ldi
+1553   5899 ED A0       > ldi
+1553   589B ED A0       > ldi
+1553   589D ED A0       > ldi
+1553   589F ED A0       > ldi
+1553   58A1 ED A0       > ldi
+1553   58A3 ED A0       > ldi
+1553   58A5 ED A0       > ldi
+1553   58A7 ED A0       > ldi
+1553   58A9 ED A0       > ldi
+1553   58AB ED A0       > ldi
+1553   58AD ED A0       > ldi
+1553   58AF ED A0       > ldi
+1553   58B1 ED A0       > ldi
+1553   58B3 ED A0       > ldi
+1553   58B5 ED A0       > ldi
+1553   58B7 ED A0       > ldi
+1553   58B9 ED A0       > ldi
+1553   58BB ED A0       > ldi
+1553   58BD ED A0       > ldi
+1553   58BF ED A0       > ldi
+1553   58C1 ED A0       > ldi
+1553   58C3 ED A0       > ldi
+1553   58C5 ED A0       > ldi
+1553   58C7 ED A0       > ldi
+1553   58C9 ED A0       > ldi
+1553   58CB ED A0       > ldi
+1553   58CD ED A0       > ldi
+1553   58CF ED A0       > ldi
+1553   58D1 ED A0       > ldi
+1553   58D3 ED A0       > ldi
+1553   58D5 ED A0       > ldi
+1553   58D7 ED A0       > ldi
+1553   58D9 ED A0       > ldi
+1553   58DB ED A0       > ldi
+1553   58DD ED A0       > ldi
+1553   58DF ED A0       > ldi
+1553   58E1 ED A0       > ldi
+1553   58E3 ED A0       > ldi
+1553   58E5 ED A0       > ldi
+1553   58E7 ED A0       > ldi
+1553   58E9 ED A0       > ldi
+1553   58EB ED A0       > ldi
+1553   58ED ED A0       > ldi
+1553   58EF ED A0       > ldi
+1553   58F1 ED A0       > ldi
+1553   58F3 ED A0       > ldi
+1553   58F5 ED A0       > ldi
+1553   58F7 ED A0       > ldi
+1553   58F9 ED A0       > ldi
+1553   58FB ED A0       > ldi
+1553   58FD ED A0       > ldi
+1553   58FF ED A0       > ldi
+1553   5901 ED A0       > ldi
+1553   5903 ED A0       > ldi
+1553   5905 ED A0       > ldi
+1553   5907 ED A0       > ldi
+1553   5909 ED A0       > ldi
+1553   590B ED A0       > ldi
+1553   590D ED A0       > ldi
+1553   590F ED A0       > ldi
+1553   5911 ED A0       > ldi
+1553   5913 ED A0       > ldi
+1553   5915 ED A0       > ldi
+1553   5917 ED A0       > ldi
+1553   5919 ED A0       > ldi
+1553   591B ED A0       > ldi
+1553   591D ED A0       > ldi
+1553   591F ED A0       > ldi
+1553   5921 ED A0       > ldi
+1553   5923 ED A0       > ldi
+1553   5925 ED A0       > ldi
+1553   5927 ED A0       > ldi
+1553   5929 ED A0       > ldi
+1553   592B ED A0       > ldi
+1553   592D ED A0       > ldi
+1553   592F ED A0       > ldi
+1553   5931 ED A0       > ldi
+1553   5933 ED A0       > ldi
+1553   5935 ED A0       > ldi
+1553   5937 ED A0       > ldi
+1553   5939 ED A0       > ldi
+1553   593B ED A0       > ldi
+1553   593D ED A0       > ldi
+1553   593F ED A0       > ldi
+1553   5941 ED A0       > ldi
+1553   5943 ED A0       > ldi
+1553   5945 ED A0       > ldi
+1553   5947 ED A0       > ldi
+1553   5949 ED A0       > ldi
+1553   594B ED A0       > ldi
+1553   594D ED A0       > ldi
+1553   594F ED A0       > ldi
+1553   5951 ED A0       > ldi
+1553   5953 ED A0       > ldi
+1553   5955 ED A0       > ldi
+1553   5957 ED A0       > ldi
+1553   5959 ED A0       > ldi
+1553   595B ED A0       > ldi
+1553   595D ED A0       > ldi
+1553   595F ED A0       > ldi
+1553   5961 ED A0       > ldi
+1553   5963 ED A0       > ldi
+1553   5965 ED A0       > ldi
+1553   5967 ED A0       > ldi
+1553   5969 ED A0       > ldi
+1553   596B ED A0       > ldi
+1553   596D ED A0       > ldi
+1553   596F ED A0       > ldi
+1553   5971 ED A0       > ldi
+1553   5973 ED A0       > ldi
+1553   5975 ED A0       > ldi
+1553   5977 ED A0       > ldi
+1553   5979 ED A0       > ldi
+1553   597B ED A0       > ldi
+1553   597D ED A0       > ldi
+1553   597F ED A0       > ldi
+1553   5981 ED A0       > ldi
+1553   5983 ED A0       > ldi
+1553   5985 ED A0       > ldi
+1553   5987 ED A0       > ldi
+1553   5989 ED A0       > ldi
+1553   598B ED A0       > ldi
+1553   598D ED A0       > ldi
+1553   598F ED A0       > ldi
+1553   5991 ED A0       > ldi
+1553   5993 ED A0       > ldi
+1553   5995 ED A0       > ldi
+1553   5997 ED A0       > ldi
+1553   5999 ED A0       > ldi
+1553   599B ED A0       > ldi
+1553   599D ED A0       > ldi
+1553   599F ED A0       > ldi
+1553   59A1 ED A0       > ldi
+1553   59A3 ED A0       > ldi
+1553   59A5 ED A0       > ldi
+1553   59A7 ED A0       > ldi
+1553   59A9 ED A0       > ldi
+1553   59AB ED A0       > ldi
+1553   59AD ED A0       > ldi
+1554   59AF EB          	ex		hl, de
+1555   59B0 00          	nop
+1556   59B1 3A 00 40    	ld		a, (PORTSPI)				; descarta CRC
+1557   59B4 00          	nop
+1558   59B5 3A 00 40    	ld		a, (PORTSPI)
+1559   59B8 FD 7E 32    	ld		a, (iy+NUMBLOCOS)			; testar se tem mais blocos para ler
+1560   59BB 3D          	dec		a
+1561   59BC FD 77 32    	ld		(iy+NUMBLOCOS), a
+1562   59BF C2 A5 55    	jp		nz, .loop
+1563   59C2 3E 4C       	ld		a, CMD12					; acabou os blocos, mandar CMD12 para cancelar leitura
+1564   59C4 CD 48 4C    	call	SD_SEND_CMD_NO_ARGS
+1565   59C7 C3 E7 5D    	jp		.fim
+1566   59CA             
+1567   59CA             .umBloco: 
+1568   59CA 3E 51       	ld		a, CMD17					; ler somente um bloco com CMD17 = Read Single Block
+1569   59CC CD 4D 4C    	call	SD_SEND_CMD_GET_ERROR
+1570   59CF 30 04       	jr		nc, .ok
+1571   59D1             .erro: 
+1572   59D1 37          	scf
+1573   59D2 C3 86 55    	jp		terminaLeituraEscritaBloco
+1574   59D5             .ok: 
+1575   59D5 CD AB 4C    	call	WAIT_RESP_FE
+1576   59D8 38 F7       	jr		c, .erro
+1577   59DA 11 00 40    	ld		de, PORTSPI
+1578   59DD EB          	ex		hl, de
+1579   59DE ED A0       > ldi
+1579   59E0 ED A0       > ldi
+1579   59E2 ED A0       > ldi
+1579   59E4 ED A0       > ldi
+1579   59E6 ED A0       > ldi
+1579   59E8 ED A0       > ldi
+1579   59EA ED A0       > ldi
+1579   59EC ED A0       > ldi
+1579   59EE ED A0       > ldi
+1579   59F0 ED A0       > ldi
+1579   59F2 ED A0       > ldi
+1579   59F4 ED A0       > ldi
+1579   59F6 ED A0       > ldi
+1579   59F8 ED A0       > ldi
+1579   59FA ED A0       > ldi
+1579   59FC ED A0       > ldi
+1579   59FE ED A0       > ldi
+1579   5A00 ED A0       > ldi
+1579   5A02 ED A0       > ldi
+1579   5A04 ED A0       > ldi
+1579   5A06 ED A0       > ldi
+1579   5A08 ED A0       > ldi
+1579   5A0A ED A0       > ldi
+1579   5A0C ED A0       > ldi
+1579   5A0E ED A0       > ldi
+1579   5A10 ED A0       > ldi
+1579   5A12 ED A0       > ldi
+1579   5A14 ED A0       > ldi
+1579   5A16 ED A0       > ldi
+1579   5A18 ED A0       > ldi
+1579   5A1A ED A0       > ldi
+1579   5A1C ED A0       > ldi
+1579   5A1E ED A0       > ldi
+1579   5A20 ED A0       > ldi
+1579   5A22 ED A0       > ldi
+1579   5A24 ED A0       > ldi
+1579   5A26 ED A0       > ldi
+1579   5A28 ED A0       > ldi
+1579   5A2A ED A0       > ldi
+1579   5A2C ED A0       > ldi
+1579   5A2E ED A0       > ldi
+1579   5A30 ED A0       > ldi
+1579   5A32 ED A0       > ldi
+1579   5A34 ED A0       > ldi
+1579   5A36 ED A0       > ldi
+1579   5A38 ED A0       > ldi
+1579   5A3A ED A0       > ldi
+1579   5A3C ED A0       > ldi
+1579   5A3E ED A0       > ldi
+1579   5A40 ED A0       > ldi
+1579   5A42 ED A0       > ldi
+1579   5A44 ED A0       > ldi
+1579   5A46 ED A0       > ldi
+1579   5A48 ED A0       > ldi
+1579   5A4A ED A0       > ldi
+1579   5A4C ED A0       > ldi
+1579   5A4E ED A0       > ldi
+1579   5A50 ED A0       > ldi
+1579   5A52 ED A0       > ldi
+1579   5A54 ED A0       > ldi
+1579   5A56 ED A0       > ldi
+1579   5A58 ED A0       > ldi
+1579   5A5A ED A0       > ldi
+1579   5A5C ED A0       > ldi
+1579   5A5E ED A0       > ldi
+1579   5A60 ED A0       > ldi
+1579   5A62 ED A0       > ldi
+1579   5A64 ED A0       > ldi
+1579   5A66 ED A0       > ldi
+1579   5A68 ED A0       > ldi
+1579   5A6A ED A0       > ldi
+1579   5A6C ED A0       > ldi
+1579   5A6E ED A0       > ldi
+1579   5A70 ED A0       > ldi
+1579   5A72 ED A0       > ldi
+1579   5A74 ED A0       > ldi
+1579   5A76 ED A0       > ldi
+1579   5A78 ED A0       > ldi
+1579   5A7A ED A0       > ldi
+1579   5A7C ED A0       > ldi
+1579   5A7E ED A0       > ldi
+1579   5A80 ED A0       > ldi
+1579   5A82 ED A0       > ldi
+1579   5A84 ED A0       > ldi
+1579   5A86 ED A0       > ldi
+1579   5A88 ED A0       > ldi
+1579   5A8A ED A0       > ldi
+1579   5A8C ED A0       > ldi
+1579   5A8E ED A0       > ldi
+1579   5A90 ED A0       > ldi
+1579   5A92 ED A0       > ldi
+1579   5A94 ED A0       > ldi
+1579   5A96 ED A0       > ldi
+1579   5A98 ED A0       > ldi
+1579   5A9A ED A0       > ldi
+1579   5A9C ED A0       > ldi
+1579   5A9E ED A0       > ldi
+1579   5AA0 ED A0       > ldi
+1579   5AA2 ED A0       > ldi
+1579   5AA4 ED A0       > ldi
+1579   5AA6 ED A0       > ldi
+1579   5AA8 ED A0       > ldi
+1579   5AAA ED A0       > ldi
+1579   5AAC ED A0       > ldi
+1579   5AAE ED A0       > ldi
+1579   5AB0 ED A0       > ldi
+1579   5AB2 ED A0       > ldi
+1579   5AB4 ED A0       > ldi
+1579   5AB6 ED A0       > ldi
+1579   5AB8 ED A0       > ldi
+1579   5ABA ED A0       > ldi
+1579   5ABC ED A0       > ldi
+1579   5ABE ED A0       > ldi
+1579   5AC0 ED A0       > ldi
+1579   5AC2 ED A0       > ldi
+1579   5AC4 ED A0       > ldi
+1579   5AC6 ED A0       > ldi
+1579   5AC8 ED A0       > ldi
+1579   5ACA ED A0       > ldi
+1579   5ACC ED A0       > ldi
+1579   5ACE ED A0       > ldi
+1579   5AD0 ED A0       > ldi
+1579   5AD2 ED A0       > ldi
+1579   5AD4 ED A0       > ldi
+1579   5AD6 ED A0       > ldi
+1579   5AD8 ED A0       > ldi
+1579   5ADA ED A0       > ldi
+1579   5ADC ED A0       > ldi
+1579   5ADE ED A0       > ldi
+1579   5AE0 ED A0       > ldi
+1579   5AE2 ED A0       > ldi
+1579   5AE4 ED A0       > ldi
+1579   5AE6 ED A0       > ldi
+1579   5AE8 ED A0       > ldi
+1579   5AEA ED A0       > ldi
+1579   5AEC ED A0       > ldi
+1579   5AEE ED A0       > ldi
+1579   5AF0 ED A0       > ldi
+1579   5AF2 ED A0       > ldi
+1579   5AF4 ED A0       > ldi
+1579   5AF6 ED A0       > ldi
+1579   5AF8 ED A0       > ldi
+1579   5AFA ED A0       > ldi
+1579   5AFC ED A0       > ldi
+1579   5AFE ED A0       > ldi
+1579   5B00 ED A0       > ldi
+1579   5B02 ED A0       > ldi
+1579   5B04 ED A0       > ldi
+1579   5B06 ED A0       > ldi
+1579   5B08 ED A0       > ldi
+1579   5B0A ED A0       > ldi
+1579   5B0C ED A0       > ldi
+1579   5B0E ED A0       > ldi
+1579   5B10 ED A0       > ldi
+1579   5B12 ED A0       > ldi
+1579   5B14 ED A0       > ldi
+1579   5B16 ED A0       > ldi
+1579   5B18 ED A0       > ldi
+1579   5B1A ED A0       > ldi
+1579   5B1C ED A0       > ldi
+1579   5B1E ED A0       > ldi
+1579   5B20 ED A0       > ldi
+1579   5B22 ED A0       > ldi
+1579   5B24 ED A0       > ldi
+1579   5B26 ED A0       > ldi
+1579   5B28 ED A0       > ldi
+1579   5B2A ED A0       > ldi
+1579   5B2C ED A0       > ldi
+1579   5B2E ED A0       > ldi
+1579   5B30 ED A0       > ldi
+1579   5B32 ED A0       > ldi
+1579   5B34 ED A0       > ldi
+1579   5B36 ED A0       > ldi
+1579   5B38 ED A0       > ldi
+1579   5B3A ED A0       > ldi
+1579   5B3C ED A0       > ldi
+1579   5B3E ED A0       > ldi
+1579   5B40 ED A0       > ldi
+1579   5B42 ED A0       > ldi
+1579   5B44 ED A0       > ldi
+1579   5B46 ED A0       > ldi
+1579   5B48 ED A0       > ldi
+1579   5B4A ED A0       > ldi
+1579   5B4C ED A0       > ldi
+1579   5B4E ED A0       > ldi
+1579   5B50 ED A0       > ldi
+1579   5B52 ED A0       > ldi
+1579   5B54 ED A0       > ldi
+1579   5B56 ED A0       > ldi
+1579   5B58 ED A0       > ldi
+1579   5B5A ED A0       > ldi
+1579   5B5C ED A0       > ldi
+1579   5B5E ED A0       > ldi
+1579   5B60 ED A0       > ldi
+1579   5B62 ED A0       > ldi
+1579   5B64 ED A0       > ldi
+1579   5B66 ED A0       > ldi
+1579   5B68 ED A0       > ldi
+1579   5B6A ED A0       > ldi
+1579   5B6C ED A0       > ldi
+1579   5B6E ED A0       > ldi
+1579   5B70 ED A0       > ldi
+1579   5B72 ED A0       > ldi
+1579   5B74 ED A0       > ldi
+1579   5B76 ED A0       > ldi
+1579   5B78 ED A0       > ldi
+1579   5B7A ED A0       > ldi
+1579   5B7C ED A0       > ldi
+1579   5B7E ED A0       > ldi
+1579   5B80 ED A0       > ldi
+1579   5B82 ED A0       > ldi
+1579   5B84 ED A0       > ldi
+1579   5B86 ED A0       > ldi
+1579   5B88 ED A0       > ldi
+1579   5B8A ED A0       > ldi
+1579   5B8C ED A0       > ldi
+1579   5B8E ED A0       > ldi
+1579   5B90 ED A0       > ldi
+1579   5B92 ED A0       > ldi
+1579   5B94 ED A0       > ldi
+1579   5B96 ED A0       > ldi
+1579   5B98 ED A0       > ldi
+1579   5B9A ED A0       > ldi
+1579   5B9C ED A0       > ldi
+1579   5B9E ED A0       > ldi
+1579   5BA0 ED A0       > ldi
+1579   5BA2 ED A0       > ldi
+1579   5BA4 ED A0       > ldi
+1579   5BA6 ED A0       > ldi
+1579   5BA8 ED A0       > ldi
+1579   5BAA ED A0       > ldi
+1579   5BAC ED A0       > ldi
+1579   5BAE ED A0       > ldi
+1579   5BB0 ED A0       > ldi
+1579   5BB2 ED A0       > ldi
+1579   5BB4 ED A0       > ldi
+1579   5BB6 ED A0       > ldi
+1579   5BB8 ED A0       > ldi
+1579   5BBA ED A0       > ldi
+1579   5BBC ED A0       > ldi
+1579   5BBE ED A0       > ldi
+1579   5BC0 ED A0       > ldi
+1579   5BC2 ED A0       > ldi
+1579   5BC4 ED A0       > ldi
+1579   5BC6 ED A0       > ldi
+1579   5BC8 ED A0       > ldi
+1579   5BCA ED A0       > ldi
+1579   5BCC ED A0       > ldi
+1579   5BCE ED A0       > ldi
+1579   5BD0 ED A0       > ldi
+1579   5BD2 ED A0       > ldi
+1579   5BD4 ED A0       > ldi
+1579   5BD6 ED A0       > ldi
+1579   5BD8 ED A0       > ldi
+1579   5BDA ED A0       > ldi
+1579   5BDC ED A0       > ldi
+1579   5BDE ED A0       > ldi
+1579   5BE0 ED A0       > ldi
+1579   5BE2 ED A0       > ldi
+1579   5BE4 ED A0       > ldi
+1579   5BE6 ED A0       > ldi
+1579   5BE8 ED A0       > ldi
+1579   5BEA ED A0       > ldi
+1579   5BEC ED A0       > ldi
+1579   5BEE ED A0       > ldi
+1579   5BF0 ED A0       > ldi
+1579   5BF2 ED A0       > ldi
+1579   5BF4 ED A0       > ldi
+1579   5BF6 ED A0       > ldi
+1579   5BF8 ED A0       > ldi
+1579   5BFA ED A0       > ldi
+1579   5BFC ED A0       > ldi
+1579   5BFE ED A0       > ldi
+1579   5C00 ED A0       > ldi
+1579   5C02 ED A0       > ldi
+1579   5C04 ED A0       > ldi
+1579   5C06 ED A0       > ldi
+1579   5C08 ED A0       > ldi
+1579   5C0A ED A0       > ldi
+1579   5C0C ED A0       > ldi
+1579   5C0E ED A0       > ldi
+1579   5C10 ED A0       > ldi
+1579   5C12 ED A0       > ldi
+1579   5C14 ED A0       > ldi
+1579   5C16 ED A0       > ldi
+1579   5C18 ED A0       > ldi
+1579   5C1A ED A0       > ldi
+1579   5C1C ED A0       > ldi
+1579   5C1E ED A0       > ldi
+1579   5C20 ED A0       > ldi
+1579   5C22 ED A0       > ldi
+1579   5C24 ED A0       > ldi
+1579   5C26 ED A0       > ldi
+1579   5C28 ED A0       > ldi
+1579   5C2A ED A0       > ldi
+1579   5C2C ED A0       > ldi
+1579   5C2E ED A0       > ldi
+1579   5C30 ED A0       > ldi
+1579   5C32 ED A0       > ldi
+1579   5C34 ED A0       > ldi
+1579   5C36 ED A0       > ldi
+1579   5C38 ED A0       > ldi
+1579   5C3A ED A0       > ldi
+1579   5C3C ED A0       > ldi
+1579   5C3E ED A0       > ldi
+1579   5C40 ED A0       > ldi
+1579   5C42 ED A0       > ldi
+1579   5C44 ED A0       > ldi
+1579   5C46 ED A0       > ldi
+1579   5C48 ED A0       > ldi
+1579   5C4A ED A0       > ldi
+1579   5C4C ED A0       > ldi
+1579   5C4E ED A0       > ldi
+1579   5C50 ED A0       > ldi
+1579   5C52 ED A0       > ldi
+1579   5C54 ED A0       > ldi
+1579   5C56 ED A0       > ldi
+1579   5C58 ED A0       > ldi
+1579   5C5A ED A0       > ldi
+1579   5C5C ED A0       > ldi
+1579   5C5E ED A0       > ldi
+1579   5C60 ED A0       > ldi
+1579   5C62 ED A0       > ldi
+1579   5C64 ED A0       > ldi
+1579   5C66 ED A0       > ldi
+1579   5C68 ED A0       > ldi
+1579   5C6A ED A0       > ldi
+1579   5C6C ED A0       > ldi
+1579   5C6E ED A0       > ldi
+1579   5C70 ED A0       > ldi
+1579   5C72 ED A0       > ldi
+1579   5C74 ED A0       > ldi
+1579   5C76 ED A0       > ldi
+1579   5C78 ED A0       > ldi
+1579   5C7A ED A0       > ldi
+1579   5C7C ED A0       > ldi
+1579   5C7E ED A0       > ldi
+1579   5C80 ED A0       > ldi
+1579   5C82 ED A0       > ldi
+1579   5C84 ED A0       > ldi
+1579   5C86 ED A0       > ldi
+1579   5C88 ED A0       > ldi
+1579   5C8A ED A0       > ldi
+1579   5C8C ED A0       > ldi
+1579   5C8E ED A0       > ldi
+1579   5C90 ED A0       > ldi
+1579   5C92 ED A0       > ldi
+1579   5C94 ED A0       > ldi
+1579   5C96 ED A0       > ldi
+1579   5C98 ED A0       > ldi
+1579   5C9A ED A0       > ldi
+1579   5C9C ED A0       > ldi
+1579   5C9E ED A0       > ldi
+1579   5CA0 ED A0       > ldi
+1579   5CA2 ED A0       > ldi
+1579   5CA4 ED A0       > ldi
+1579   5CA6 ED A0       > ldi
+1579   5CA8 ED A0       > ldi
+1579   5CAA ED A0       > ldi
+1579   5CAC ED A0       > ldi
+1579   5CAE ED A0       > ldi
+1579   5CB0 ED A0       > ldi
+1579   5CB2 ED A0       > ldi
+1579   5CB4 ED A0       > ldi
+1579   5CB6 ED A0       > ldi
+1579   5CB8 ED A0       > ldi
+1579   5CBA ED A0       > ldi
+1579   5CBC ED A0       > ldi
+1579   5CBE ED A0       > ldi
+1579   5CC0 ED A0       > ldi
+1579   5CC2 ED A0       > ldi
+1579   5CC4 ED A0       > ldi
+1579   5CC6 ED A0       > ldi
+1579   5CC8 ED A0       > ldi
+1579   5CCA ED A0       > ldi
+1579   5CCC ED A0       > ldi
+1579   5CCE ED A0       > ldi
+1579   5CD0 ED A0       > ldi
+1579   5CD2 ED A0       > ldi
+1579   5CD4 ED A0       > ldi
+1579   5CD6 ED A0       > ldi
+1579   5CD8 ED A0       > ldi
+1579   5CDA ED A0       > ldi
+1579   5CDC ED A0       > ldi
+1579   5CDE ED A0       > ldi
+1579   5CE0 ED A0       > ldi
+1579   5CE2 ED A0       > ldi
+1579   5CE4 ED A0       > ldi
+1579   5CE6 ED A0       > ldi
+1579   5CE8 ED A0       > ldi
+1579   5CEA ED A0       > ldi
+1579   5CEC ED A0       > ldi
+1579   5CEE ED A0       > ldi
+1579   5CF0 ED A0       > ldi
+1579   5CF2 ED A0       > ldi
+1579   5CF4 ED A0       > ldi
+1579   5CF6 ED A0       > ldi
+1579   5CF8 ED A0       > ldi
+1579   5CFA ED A0       > ldi
+1579   5CFC ED A0       > ldi
+1579   5CFE ED A0       > ldi
+1579   5D00 ED A0       > ldi
+1579   5D02 ED A0       > ldi
+1579   5D04 ED A0       > ldi
+1579   5D06 ED A0       > ldi
+1579   5D08 ED A0       > ldi
+1579   5D0A ED A0       > ldi
+1579   5D0C ED A0       > ldi
+1579   5D0E ED A0       > ldi
+1579   5D10 ED A0       > ldi
+1579   5D12 ED A0       > ldi
+1579   5D14 ED A0       > ldi
+1579   5D16 ED A0       > ldi
+1579   5D18 ED A0       > ldi
+1579   5D1A ED A0       > ldi
+1579   5D1C ED A0       > ldi
+1579   5D1E ED A0       > ldi
+1579   5D20 ED A0       > ldi
+1579   5D22 ED A0       > ldi
+1579   5D24 ED A0       > ldi
+1579   5D26 ED A0       > ldi
+1579   5D28 ED A0       > ldi
+1579   5D2A ED A0       > ldi
+1579   5D2C ED A0       > ldi
+1579   5D2E ED A0       > ldi
+1579   5D30 ED A0       > ldi
+1579   5D32 ED A0       > ldi
+1579   5D34 ED A0       > ldi
+1579   5D36 ED A0       > ldi
+1579   5D38 ED A0       > ldi
+1579   5D3A ED A0       > ldi
+1579   5D3C ED A0       > ldi
+1579   5D3E ED A0       > ldi
+1579   5D40 ED A0       > ldi
+1579   5D42 ED A0       > ldi
+1579   5D44 ED A0       > ldi
+1579   5D46 ED A0       > ldi
+1579   5D48 ED A0       > ldi
+1579   5D4A ED A0       > ldi
+1579   5D4C ED A0       > ldi
+1579   5D4E ED A0       > ldi
+1579   5D50 ED A0       > ldi
+1579   5D52 ED A0       > ldi
+1579   5D54 ED A0       > ldi
+1579   5D56 ED A0       > ldi
+1579   5D58 ED A0       > ldi
+1579   5D5A ED A0       > ldi
+1579   5D5C ED A0       > ldi
+1579   5D5E ED A0       > ldi
+1579   5D60 ED A0       > ldi
+1579   5D62 ED A0       > ldi
+1579   5D64 ED A0       > ldi
+1579   5D66 ED A0       > ldi
+1579   5D68 ED A0       > ldi
+1579   5D6A ED A0       > ldi
+1579   5D6C ED A0       > ldi
+1579   5D6E ED A0       > ldi
+1579   5D70 ED A0       > ldi
+1579   5D72 ED A0       > ldi
+1579   5D74 ED A0       > ldi
+1579   5D76 ED A0       > ldi
+1579   5D78 ED A0       > ldi
+1579   5D7A ED A0       > ldi
+1579   5D7C ED A0       > ldi
+1579   5D7E ED A0       > ldi
+1579   5D80 ED A0       > ldi
+1579   5D82 ED A0       > ldi
+1579   5D84 ED A0       > ldi
+1579   5D86 ED A0       > ldi
+1579   5D88 ED A0       > ldi
+1579   5D8A ED A0       > ldi
+1579   5D8C ED A0       > ldi
+1579   5D8E ED A0       > ldi
+1579   5D90 ED A0       > ldi
+1579   5D92 ED A0       > ldi
+1579   5D94 ED A0       > ldi
+1579   5D96 ED A0       > ldi
+1579   5D98 ED A0       > ldi
+1579   5D9A ED A0       > ldi
+1579   5D9C ED A0       > ldi
+1579   5D9E ED A0       > ldi
+1579   5DA0 ED A0       > ldi
+1579   5DA2 ED A0       > ldi
+1579   5DA4 ED A0       > ldi
+1579   5DA6 ED A0       > ldi
+1579   5DA8 ED A0       > ldi
+1579   5DAA ED A0       > ldi
+1579   5DAC ED A0       > ldi
+1579   5DAE ED A0       > ldi
+1579   5DB0 ED A0       > ldi
+1579   5DB2 ED A0       > ldi
+1579   5DB4 ED A0       > ldi
+1579   5DB6 ED A0       > ldi
+1579   5DB8 ED A0       > ldi
+1579   5DBA ED A0       > ldi
+1579   5DBC ED A0       > ldi
+1579   5DBE ED A0       > ldi
+1579   5DC0 ED A0       > ldi
+1579   5DC2 ED A0       > ldi
+1579   5DC4 ED A0       > ldi
+1579   5DC6 ED A0       > ldi
+1579   5DC8 ED A0       > ldi
+1579   5DCA ED A0       > ldi
+1579   5DCC ED A0       > ldi
+1579   5DCE ED A0       > ldi
+1579   5DD0 ED A0       > ldi
+1579   5DD2 ED A0       > ldi
+1579   5DD4 ED A0       > ldi
+1579   5DD6 ED A0       > ldi
+1579   5DD8 ED A0       > ldi
+1579   5DDA ED A0       > ldi
+1579   5DDC ED A0       > ldi
+1580   5DDE EB          	ex		hl, de
+1581   5DDF 00          	nop
+1582   5DE0 3A 00 40    	ld		a, (PORTSPI)				; descarta CRC
+1583   5DE3 00          	nop
+1584   5DE4 3A 00 40    	ld		a, (PORTSPI)
+1585   5DE7             .fim: 
+1586   5DE7 AF          	xor		a							; zera carry para informar leitura sem erros
+1587   5DE8 C3 86 55    	jp		terminaLeituraEscritaBloco
+1588   5DEB             
+1589   5DEB             ; ------------------------------------------------
+1590   5DEB             ; Converte blocos para bytes. Na pratica faz
+1591   5DEB             ; BC DE = (BC DE) * 512
+1592   5DEB             ; ------------------------------------------------
+1593   5DEB             blocoParaByte: 
+1594   5DEB 41          	ld		b, c
+1595   5DEC 4A          	ld		c, d
+1596   5DED 53          	ld		d, e
+1597   5DEE 1E 00       	ld		e, 0
+1598   5DF0 CB 22       	sla		d
+1599   5DF2 CB 11       	rl		c
+1600   5DF4 CB 10       	rl		b
+1601   5DF6 C9          	ret
+1602   5DF7             
+1603   5DF7             ; ------------------------------------------------
+1604   5DF7             ; Funcoes utilitarias
+1605   5DF7             ; ------------------------------------------------
+1606   5DF7             
+1607   5DF7             ; ------------------------------------------------
+1608   5DF7             ; Chaveia para modo SPI
+1609   5DF7             ; ------------------------------------------------
+1610   5DF7             modoSPI: 
+1611   5DF7 F5          	push	af
+1612   5DF8 3E 01       	ld		a, 1
+1613   5DFA 32 01 60    	ld		(CHAVEIASPI), a
+1614   5DFD F1          	pop		af
+1615   5DFE C9          	ret
+1616   5DFF             
+1617   5DFF             ; ------------------------------------------------
+1618   5DFF             ; Chaveia para modo ROM
+1619   5DFF             ; ------------------------------------------------
+1620   5DFF             modoROM: 
+1621   5DFF F5          	push	af
+1622   5E00 3E 00       	ld		a, 0
+1623   5E02 32 01 60    	ld		(CHAVEIASPI), a
+1624   5E05 F1          	pop		af
+1625   5E06 C9          	ret
+1626   5E07             
+1627   5E07             ; ------------------------------------------------
+1628   5E07             ; Imprime string na tela apontada por DE
+1629   5E07             ; Destroi todos os registradores
+1630   5E07             ; ------------------------------------------------
+1631   5E07             printString: 
+1632   5E07 1A          	ld		a, (de)
+1633   5E08 B7          	or		a
+1634   5E09 C8          	ret z
+1635   5E0A CD A2 00    	call	BIOS_CHPUT
+1636   5E0D 13          	inc		de
+1637   5E0E 18 F7       	jr		printString
+1638   5E10             
+1639   5E10             
+1640   5E10             ; ------------------------------------------------
+1641   5E10             ; Converte o byte em A para string em decimal no
+1642   5E10             ; buffer apontado por DE
+1643   5E10             ; Destroi AF, BC, HL, DE
+1644   5E10             ; ------------------------------------------------
+1645   5E10             DecToAscii: 
+1646   5E10 26 00       	ld		h, 0
+1647   5E12 6F          	ld		l, a						; copiar A para HL
+1648   5E13 FD 36 34 01 	ld		(iy+TEMP), 1				; flag para indicar que devemos cortar os zeros a esquerda
+1649   5E17 01 9C FF    	ld		bc, -100					; centenas
+1650   5E1A CD 28 5E    	call	.num1
+1651   5E1D 0E F6       	ld		c, -10						; dezenas
+1652   5E1F CD 28 5E    	call	.num1
+1653   5E22 FD 36 34 02 	ld		(iy+TEMP), 2				; unidade deve exibir 0 se for zero e nao corta-lo
+1654   5E26 0E FF       	ld		c, -1						; unidades
+1655   5E28             .num1: 
+1656   5E28 3E 2F       	ld		a, '0'-1
+1657   5E2A             .num2: 
+1658   5E2A 3C          	inc		a							; contar o valor em ascii de '0' a '9'
+1659   5E2B 09          	add		hl, bc						; somar com negativo
+1660   5E2C 38 FC       	jr		c, .num2					; ainda nao zeramos
+1661   5E2E ED 42       	sbc		hl, bc						; retoma valor original
+1662   5E30 FD 35 34    	dec		(iy+TEMP)					; se flag do corte do zero indicar para nao cortar, pula
+1663   5E33 20 08       	jr		nz, .naozero
+1664   5E35 FE 30       	cp		'0'							; devemos cortar os zeros a esquerda. Eh zero?
+1665   5E37 20 04       	jr		nz, .naozero
+1666   5E39 FD 34 34    	inc		(iy+TEMP)					; se for zero, nao salvamos e voltamos a flag
+1667   5E3C C9          	ret
+1668   5E3D             .naozero: 
+1669   5E3D 12          	ld		(de), a						; eh zero ou eh outro numero, salvar
+1670   5E3E 13          	inc		de							; incrementa ponteiro de destino
+1671   5E3F C9          	ret
+1672   5E40             
+1673   5E40             ; ------------------------------------------------
+1674   5E40             ; Converte o byte em A para string em hexa no
+1675   5E40             ; buffer apontado por DE
+1676   5E40             ; Destroi AF, C, DE
+1677   5E40             ; ------------------------------------------------
+1678   5E40             HexToAscii: 
+1679   5E40 4F          	ld		c, a
+1680   5E41 1F          	rra
+1681   5E42 1F          	rra
+1682   5E43 1F          	rra
+1683   5E44 1F          	rra
+1684   5E45 CD 49 5E    	call	.conv
+1685   5E48 79          	ld  	a, c
+1686   5E49             .conv: 
+1687   5E49 E6 0F       	and		$0F
+1688   5E4B C6 90       	add		a, $90
+1689   5E4D 27          	daa
+1690   5E4E CE 40       	adc		a, $40
+1691   5E50 27          	daa
+1692   5E51 12          	ld		(de), a
+1693   5E52 13          	inc		de
+1694   5E53 C9          	ret
+1695   5E54             
+1696   5E54             ; ------------------------------------------------
+1697   5E54             ; Converte o byte em A para string em decimal e
+1698   5E54             ; imprime na tela
+1699   5E54             ; Destroi AF, BC, HL, DE
+1700   5E54             ; ------------------------------------------------
+1701   5E54             printDecToAscii: 
+1702   5E54 26 00       	ld		h, 0
+1703   5E56 6F          	ld		l, a						; copiar A para HL
+1704   5E57 06 01       	ld		b, 1						; flag para indicar que devemos cortar os zeros a esquerda
+1705   5E59 11 9C FF    	ld		de, -100					; centenas
+1706   5E5C CD 68 5E    	call	.num1
+1707   5E5F 1E F6       	ld		e, -10						; dezenas
+1708   5E61 CD 68 5E    	call	.num1
+1709   5E64 06 02       	ld		b, 2						; unidade deve exibir 0 se for zero e nao corta-lo
+1710   5E66 1E FF       	ld		e, -1						; unidades
+1711   5E68             .num1: 
+1712   5E68 3E 2F       	ld		a, '0'-1
+1713   5E6A             .num2: 
+1714   5E6A 3C          	inc		a							; contar o valor em ascii de '0' a '9'
+1715   5E6B 19          	add		hl, de						; somar com negativo
+1716   5E6C 38 FC       	jr		c, .num2					; ainda nao zeramos
+1717   5E6E ED 52       	sbc		hl, de						; retoma valor original
+1718   5E70 10 06       	djnz	.naozero					; se flag do corte do zero indicar para nao cortar, pula
+1719   5E72 FE 30       	cp		'0'							; devemos cortar os zeros a esquerda. Eh zero?
+1720   5E74 20 02       	jr		nz, .naozero
+1721   5E76 04          	inc		b							; se for zero, nao imprimimos e voltamos a flag
+1722   5E77 C9          	ret
+1723   5E78             .naozero: 
+1724   5E78 E5          	push	hl							; nao eh zero ou eh outro numero, imprimir
+1725   5E79 C5          	push	bc
+1726   5E7A CD A2 00    	call	BIOS_CHPUT
+1727   5E7D C1          	pop		bc
+1728   5E7E E1          	pop		hl
+1729   5E7F C9          	ret
+1730   5E80             
+1731   5E80             ; ------------------------------------------------
+1732   5E80             ; Procura pelo nome do fabricante em uma tabela.
+1733   5E80             ; A contem o byte do fabricante
+1734   5E80             ; Devolve HL apontando para o buffer do fabricante
+1735   5E80             ; e BC com o comprimento do texto
+1736   5E80             ; Destroi AF, BC, HL
+1737   5E80             ; ------------------------------------------------
+1738   5E80             pegaFabricante: 
+1739   5E80 4F          	ld		c, a
+1740   5E81 21 A2 5E    	ld		hl, tblFabricantes
+1741   5E84             
+1742   5E84             .loop: 
+1743   5E84 7E          	ld		a, (hl)
+1744   5E85 23          	inc		hl
+1745   5E86 B9          	cp		c
+1746   5E87 28 0C       	jr		z, .achado
+1747   5E89 B7          	or		a
+1748   5E8A 28 09       	jr		z, .achado
+1749   5E8C C5          	push	bc
+1750   5E8D CD 95 5E    	call	.achado
+1751   5E90 09          	add		hl, bc
+1752   5E91 23          	inc		hl
+1753   5E92 C1          	pop		bc
+1754   5E93 18 EF       	jr		.loop
+1755   5E95             
+1756   5E95             .achado: 
+1757   5E95 0E 00       	ld		c, 0
+1758   5E97 E5          	push	hl
+1759   5E98 AF          	xor		a
+1760   5E99             .loop2: 
+1761   5E99 0C          	inc		c
+1762   5E9A 23          	inc		hl
+1763   5E9B BE          	cp		(hl)
+1764   5E9C 20 FB       	jr		nz, .loop2
+1765   5E9E E1          	pop		hl
+1766   5E9F 06 00       	ld		b, 0
+1767   5EA1 C9          	ret
+1768   5EA2             
+1769   5EA2             ; ---------------------------------------------------------------------------
+1770   5EA2             tblFabricantes: 
+1771   5EA2 01          	db	1
+1772   5EA3             	db	"Panasonic",0
+1772   5EA3 50616E61736F6E696300
+1773   5EAD 02          	db	2
+1774   5EAE             	db	"Toshiba",0
+1774   5EAE 546F736869626100
+1775   5EB6 03          	db	3
+1776   5EB7             	db	"SanDisk",0
+1776   5EB7 53616E4469736B00
+1777   5EBF 04          	db	4
+1778   5EC0             	db	"SMI-S",0
+1778   5EC0 534D492D5300
+1779   5EC6 06          	db	6
+1780   5EC7             	db	"Renesas",0
+1780   5EC7 52656E6573617300
+1781   5ECF 11          	db	17
+1782   5ED0             	db	"Dane-Elec",0
+1782   5ED0 44616E652D456C656300
+1783   5EDA 13          	db	19
+1784   5EDB             	db	"KingMax",0
+1784   5EDB 4B696E674D617800
+1785   5EE3 15          	db	21
+1786   5EE4             	db	"Samsung",0
+1786   5EE4 53616D73756E6700
+1787   5EEC 18          	db	24
+1788   5EED             	db	"Infineon",0
+1788   5EED 496E66696E656F6E00
+1789   5EF6 1A          	db	26
+1790   5EF7 50 51 49 00 	db	"PQI",0
+1791   5EFB 1B          	db	27
+1792   5EFC 536F6E7900  	db	"Sony",0
+1793   5F01 1C          	db	28
+1794   5F02             	db	"Transcend",0
+1794   5F02 5472616E7363656E6400
+1795   5F0C 1D          	db	29
+1796   5F0D             	db	"A-DATA",0
+1796   5F0D 412D4441544100
+1797   5F14 1F          	db	31
+1798   5F15             	db	"SiliconPower",0
+1798   5F15 53696C69636F6E506F77657200
+1799   5F22 27          	db	39
+1800   5F23             	db	"Verbatim",0
+1800   5F23 566572626174696D00
+1801   5F2C 41          	db	65
+1802   5F2D 4F 4B 49 00 	db	"OKI",0
+1803   5F31 73          	db	115
+1804   5F32             	db	"SilverHT",0
+1804   5F32 53696C766572485400
+1805   5F3B 89          	db	137
+1806   5F3C             	db	"L.Data",0
+1806   5F3C 4C2E4461746100
+1807   5F43 00          	db	0
+1808   5F44             	db	"Generico",0
+1808   5F44 47656E657269636F00
+1809   5F4D             
+1810   5F4D             ; ------------------------------------------------
+1811   5F4D             strTitulo: 
+1812   5F4D             	db		"SD Mapper/Megaram",13,10
+1812   5F4D 5344204D61707065722F4D65676172616D0D0A
+1813   5F60             	db		"Nextor Driver",13,10
+1813   5F60 4E6578746F72204472697665720D0A
+1814   5F6F             	db		"Versao "
+1814   5F6F 56657273616F20
+1815   5F76 312E302E34  	db		VER_MAIN + $30, '.', VER_SEC + $30, '.', VER_REV + $30
+1816   5F7B 0D 0A       	db		13, 10
+1817   5F7D             	db		"Copyright (c) 2014",13,10
+1817   5F7D 436F707972696768742028632920323031340D0A
+1818   5F91             	db		"Fabio Belavenuto",13,10
+1818   5F91 466162696F2042656C6176656E75746F0D0A
+1819   5FA3             	db		"PCB por Luciano Sturaro",13,10
+1819   5FA3 50434220706F72204C756369616E6F205374757261726F0D0A
+1820   5FBC             	db		"Licenced under",13,10
+1820   5FBC 4C6963656E63656420756E6465720D0A
+1821   5FCC             	db		"CERN OHL v1.1",13,10
+1821   5FCC 4345524E204F484C2076312E310D0A
+1822   5FDB             	db		"http://ohwr.org/cernohl",13,10
+1822   5FDB 687474703A2F2F6F6877722E6F72672F6365726E6F686C0D0A
+1823   5FF4             	; fall throw
+1824   5FF4             strCrLf: 
+1825   5FF4 0D 0A 00    	db		13,10,0
+1826   5FF7             strCartao: 
+1827   5FF7             	db		"Slot ",0
+1827   5FF7 536C6F742000
+1828   5FFD             strVazio: 
+1829   5FFD             	db		"Vazio",13,10,0
+1829   5FFD 56617A696F0D0A00
+1830   6005             strNaoIdentificado: 
+1831   6005             	db		"Nao identificado!",13,10,0
+1831   6005 4E616F206964656E746966696361646F210D0A00
+1832   6019             strMr_mp_desativada: 
+1833   6019             	db		"Mapper/megaram desativada",13,10,0
+1833   6019 4D61707065722F6D65676172616D20646573617469766164610D0A00
+1834   6035             strMapper: 
+1835   6035             	db		"Mapper ativada",13,10,0
+1835   6035 4D617070657220617469766164610D0A00
+1836   6046             strMegaram: 
+1837   6046             	db		"Megaram ativada",13,10,0
+1837   6046 4D65676172616D20617469766164610D0A00
+1838   6058             strSDV1: 
+1839   6058             	db		"SDV1 - ",0
+1839   6058 53445631202D2000
+1840   6060             strSDV2: 
+1841   6060             	db		"SDV2 - ",0
+1841   6060 53445632202D2000
+1842   6068             
+1843   6068             ;-----------------------------------------------------------------------------
+1844   6068             ;
+1845   6068             ; End of the driver code
+1846   6068             
+1847   6068             DRV_END: 
+1848   6068             
+1849   6068 FF          	ds	3ED0h-(DRV_END-DRV_START), $FF
+1850   7FD0             
+1851   7FD0             
