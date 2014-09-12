@@ -14,8 +14,11 @@
 
 ; Enderecos ROM
 
+BIOS_INITXT	= $6C						; Inicializa SCREEN0
 BIOS_CHPUT	= $A2						; A=char
 BIOS_CLS	= $C3						; Chamar com A=0
+LINL40		= $F3AE						; Width
+LINLEN		= $F3B0
 
 ; Enderecos SPI
 
@@ -304,6 +307,7 @@ DRV_INIT:
 	jp		z, .primeira_chamada
 
 ; 2. chamada:
+	call	BIOS_INITXT					; inicializar tela
 	xor		a
 	call	BIOS_CLS					; limpar tela
 	call	pegaWorkArea
@@ -1790,6 +1794,8 @@ tblFabricantes:
 	db	"Transcend",0
 	db	29
 	db	"A-DATA",0
+	db	31
+	db	"SiliconPower",0
 	db	39
 	db	"Verbatim",0
 	db	65
@@ -1799,7 +1805,7 @@ tblFabricantes:
 	db	137
 	db	"L.Data",0
 	db	0
-	db	"Desconhecido",0
+	db	"Generico",0
 
 ; ------------------------------------------------
 strTitulo:
