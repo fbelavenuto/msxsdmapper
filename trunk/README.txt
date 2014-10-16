@@ -1,4 +1,4 @@
-Projeto SD Mapper 512K para MSX
+Projeto SD Mapper/Megaram 512K para MSX
 
 Copyright (c) 2014
 Fabio Belavenuto

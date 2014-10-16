@@ -1,0 +1,39 @@
+P-CAD Bill of Materials                    SD-Mapper-final_version.pcb
+
+======================================================================
+
+RefDes          Qty    Value          
+--------------- ------ -----------------------------------------------
+
+C2              1      100uf x 10V
+
+S1, S2          2      Chave H-H Mini (lecomp cod. SK12D07)
+
+X1              1      25MHz 5x7 SMD active crystal oscillator
+
+C1, C3, C4, C5,  
+C6, C7          6      100nF SMD Cap 0805
+
+D1, D2          2      Led vermelho 3mm
+
+IC1             1      AM29F010 Flash PLCC
+
+R1, R2, R4, R5,
+R6, R7, R8, R9  8      4K7 SMD Res 0805
+
+R3              1      330R SMD Res 0805
+
+SD1, SD2        2      SD-CARD Slot
+
+IC2             1      HM628512ALFP SOP32
+
+T1, T2          2      BC858 SOT-23
+
+IC4             1      LD1117-3.3 SOT223
+
+IC3             1      XC95144XL-TQ100
+
+
+======================================================================
+15-Oct-14  20:08                                            Page    1
+======================================================================
