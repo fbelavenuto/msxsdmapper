@@ -4,6 +4,8 @@
 
 Esse projeto tem duas chaves externas, uma delas liga ou desliga a memória de 512KiB. Se desligar, você fica somente com a interface SD, podendo ligar em slots expandidos ou não. Se ligar a memória, você usa a outra chave para escolher entre megaram ou mapper.
 
+No hardware há um cristal oscilador de 25MHz, fazendo a interface ser assíncrona e independente do clock do barramento.
+
 Se ligar a memória você liga o expansor interno (para poder ter dois dispositivos ao mesmo tempo), mas só poderá usar em slots não-expandidos.
 
 Na lista de componentes, a flash indicada é a `AM29F010`, porém o projeto e o atualizador suporta outros tipos de flash, desde que seja invólucro PLCC:
