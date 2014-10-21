@@ -1551,7 +1551,7 @@
 1145   092E             ; AT49F002T   = $1F $08		alg byte
 1146   092E             ; AT49(H)F010 = $1F $17		alg byte
 1147   092E             ; AT29C010A   = $1F $D5		alg 128-page
-1148   092E             ; AM29F010    = $20 $01		alg byte
+1148   092E             ; AM29F010    = $01 $20		alg byte
 1149   092E             ; SST29EE010  = $BF $07		alg 128-page
 1150   092E             ; SST39SF020  = $BF $B6		alg byte
 1151   092E             ; W49F002U/N  = $DA $0B		alg byte
@@ -1576,7 +1576,7 @@
 1170   0945 75 09       		.dw strAtmel
 1171   0947 AB 09       		.dw strAt29c010a
 1172   0949 02          		.db ALG_PAGE
-1173   094A 20 01       	.db		$20, $01
+1173   094A 01 20       	.db		$01, $20
 1174   094C 7C 09       		.dw strAMD
 1175   094E B5 09       		.dw	strAm29F010
 1176   0950 01          		.db	ALG_BYTE

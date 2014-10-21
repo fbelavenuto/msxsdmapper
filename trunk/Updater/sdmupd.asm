@@ -1144,7 +1144,7 @@ strListaCab:
 ; AT49F002T   = $1F $08		alg byte
 ; AT49(H)F010 = $1F $17		alg byte
 ; AT29C010A   = $1F $D5		alg 128-page
-; AM29F010    = $20 $01		alg byte
+; AM29F010    = $01 $20		alg byte
 ; SST29EE010  = $BF $07		alg 128-page
 ; SST39SF020  = $BF $B6		alg byte
 ; W49F002U/N  = $DA $0B		alg byte
@@ -1169,7 +1169,7 @@ tblFlash:
 		.dw strAtmel
 		.dw strAt29c010a
 		.db ALG_PAGE
-	.db		$20, $01
+	.db		$01, $20
 		.dw strAMD
 		.dw	strAm29F010
 		.db	ALG_BYTE
