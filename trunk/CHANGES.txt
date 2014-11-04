@@ -1,3 +1,6 @@
+04/11/2014:
+  Atualizado versão no Nextor para 2.0.4
+
 06/07/2014:
   Alterado lógica do CPLD para porta SPI trabalhar assincronicamente. Não
 é mais necessário depender do clock do barramento.
