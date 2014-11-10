@@ -23,7 +23,7 @@ Na lista de componentes, a flash indicada é a `AM29F010`, porém o projeto e o 
 A memória SRAM pode ser substituída pela `AS6C4008`.
 
 == Sistema Operacional ==
-O sistema operacional é o Nextor, na sua última versão estável, mas a flash interna pode ser atualizada pelo próprio MSX. Para isso você precisa de outra interface de armazenamento em massa (floppy, ide, etc).
+O sistema operacional é o Nextor, na sua última versão estável. A flash interna pode ser atualizada pelo próprio MSX. Para isso você precisa de outra interface de armazenamento em massa (floppy, ide, etc) e usar o atualizador `sdmupd.com`.
 
 == Cartões SD ==
 Há duas entradas para cartão SD. Suporta cartões SD ou SDHC e foi testado com cartões de 128MB até 8GB. O Nextor tem a mesma regra do DOS2, se tiver 128K de mapper dá para usar sub-diretórios e FAT16 nativo, assim você pode ter até 4 partições em cada cartão, e cada partição pode ter até 4GB.
