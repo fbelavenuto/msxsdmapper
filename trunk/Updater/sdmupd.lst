@@ -757,7 +757,7 @@
 0384   032D C2 0A 05    	jp		nz, printErro				; oops! Error writing bytes. Show Error and exit.
 0385   0330             
 0386   0330 11 94 08    	ld		de, strPonto
-0387   0333 CD 3E 05    	call	print						; show '.' for 16 K page loaded
+0387   0333 CD 3E 05    	call	print						; show '*' for 16 K page loaded
 0388   0336 C1          	pop		bc
 0389   0337 3A F8 09    	ld		a, (actualpage)
 0390   033A 3C          	inc		a
@@ -1517,7 +1517,7 @@
 1117   0893 24          	.db		'$'
 1118   0894             
 1119   0894             strPonto: 
-1120   0894 2E 24       	.db		'.$'
+1120   0894 2A 24       	.db		'*$'
 1121   0896             
 1122   0896             strGravando: 
 1123   0896 0D 00 0A 00 	.dw 	13, 10
