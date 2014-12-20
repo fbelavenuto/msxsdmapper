@@ -6,7 +6,7 @@
 <setting alwaysvectorfont="no"/>
 <setting verticaltext="up"/>
 </settings>
-<grid distance="0.1" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
+<grid distance="0.1" unitdist="inch" unit="mil" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
 <layers>
 <layer number="1" name="Top" color="4" fill="1" visible="yes" active="no"/>
 <layer number="2" name="Route2" color="1" fill="3" visible="yes" active="no"/>
@@ -17557,6 +17557,31 @@ Source: http://www2.produktinfo.conrad.com/datenblaetter/700000-724999/705152-da
 </library>
 <library name="JTAGs">
 <packages>
+<package name="SMD5X2">
+<description>&lt;B&gt;JTAG&lt;/B&gt; edge connector</description>
+<smd name="9" x="5.08" y="3.81" dx="1.524" dy="6.477" layer="16"/>
+<smd name="7" x="2.54" y="3.81" dx="1.524" dy="6.477" layer="16"/>
+<smd name="5" x="0" y="3.81" dx="1.524" dy="6.477" layer="16"/>
+<smd name="3" x="-2.54" y="3.81" dx="1.524" dy="6.477" layer="16"/>
+<smd name="1" x="-5.08" y="3.81" dx="1.524" dy="6.477" layer="16"/>
+<smd name="10" x="5.08" y="3.81" dx="1.524" dy="6.477" layer="1"/>
+<smd name="8" x="2.54" y="3.81" dx="1.524" dy="6.477" layer="1"/>
+<smd name="6" x="0" y="3.81" dx="1.524" dy="6.477" layer="1"/>
+<smd name="4" x="-2.54" y="3.81" dx="1.524" dy="6.477" layer="1"/>
+<smd name="2" x="-5.08" y="3.81" dx="1.524" dy="6.477" layer="1"/>
+<text x="7.62" y="5.08" size="1.778" layer="25">&gt;NAME</text>
+<text x="7.62" y="2.54" size="1.778" layer="27">&gt;VALUE</text>
+<rectangle x1="-5.842" y1="0.508" x2="-4.318" y2="7.112" layer="34"/>
+<rectangle x1="-5.842" y1="0.508" x2="-4.318" y2="7.112" layer="33"/>
+<rectangle x1="-3.302" y1="0.508" x2="-1.778" y2="7.112" layer="34"/>
+<rectangle x1="-3.302" y1="0.508" x2="-1.778" y2="7.112" layer="33"/>
+<rectangle x1="-0.762" y1="0.508" x2="0.762" y2="7.112" layer="34"/>
+<rectangle x1="-0.762" y1="0.508" x2="0.762" y2="7.112" layer="33"/>
+<rectangle x1="1.778" y1="0.508" x2="3.302" y2="7.112" layer="34"/>
+<rectangle x1="1.778" y1="0.508" x2="3.302" y2="7.112" layer="33"/>
+<rectangle x1="4.318" y1="0.508" x2="5.842" y2="7.112" layer="34"/>
+<rectangle x1="4.318" y1="0.508" x2="5.842" y2="7.112" layer="33"/>
+</package>
 <package name="PH5X2">
 <description>&lt;b&gt;PIN HEADER&lt;/b&gt;</description>
 <wire x1="-5.715" y1="2.54" x2="-4.445" y2="2.54" width="0.1524" layer="21"/>
@@ -17591,16 +17616,16 @@ Source: http://www2.produktinfo.conrad.com/datenblaetter/700000-724999/705152-da
 <wire x1="6.35" y1="1.905" x2="6.35" y2="-1.905" width="0.1524" layer="21"/>
 <wire x1="5.715" y1="2.54" x2="6.35" y2="1.905" width="0.1524" layer="21"/>
 <wire x1="6.35" y1="-1.905" x2="5.715" y2="-2.54" width="0.1524" layer="21"/>
-<pad name="TCK" x="-5.08" y="-1.27" drill="1.016" diameter="1.778"/>
-<pad name="TDO" x="-2.54" y="-1.27" drill="1.016" diameter="1.778" shape="octagon"/>
-<pad name="TMS" x="0" y="-1.27" drill="1.016" diameter="1.778" shape="octagon"/>
-<pad name="NC@1" x="2.54" y="-1.27" drill="1.016" diameter="1.778" shape="octagon"/>
-<pad name="TDI" x="5.08" y="-1.27" drill="1.016" diameter="1.778" shape="octagon"/>
-<pad name="GND@1" x="-5.08" y="1.27" drill="1.016" diameter="1.778" shape="octagon"/>
-<pad name="+3V3" x="-2.54" y="1.27" drill="1.016" diameter="1.778" shape="octagon"/>
-<pad name="NC@2" x="0" y="1.27" drill="1.016" diameter="1.778" shape="octagon"/>
-<pad name="NC@3" x="2.54" y="1.27" drill="1.016" diameter="1.778" shape="octagon"/>
-<pad name="GND@2" x="5.08" y="1.27" drill="1.016" diameter="1.778" shape="octagon"/>
+<pad name="1" x="-5.08" y="-1.27" drill="1.016" diameter="1.778"/>
+<pad name="3" x="-2.54" y="-1.27" drill="1.016" diameter="1.778" shape="octagon"/>
+<pad name="5" x="0" y="-1.27" drill="1.016" diameter="1.778" shape="octagon"/>
+<pad name="7" x="2.54" y="-1.27" drill="1.016" diameter="1.778" shape="octagon"/>
+<pad name="9" x="5.08" y="-1.27" drill="1.016" diameter="1.778" shape="octagon"/>
+<pad name="2" x="-5.08" y="1.27" drill="1.016" diameter="1.778" shape="octagon"/>
+<pad name="4" x="-2.54" y="1.27" drill="1.016" diameter="1.778" shape="octagon"/>
+<pad name="6" x="0" y="1.27" drill="1.016" diameter="1.778" shape="octagon"/>
+<pad name="8" x="2.54" y="1.27" drill="1.016" diameter="1.778" shape="octagon"/>
+<pad name="10" x="5.08" y="1.27" drill="1.016" diameter="1.778" shape="octagon"/>
 <text x="-6.35" y="2.921" size="1.27" layer="25" ratio="10">&gt;NAME</text>
 <text x="0" y="-4.191" size="1.27" layer="27" ratio="10">&gt;VALUE</text>
 <rectangle x1="-2.794" y1="-1.524" x2="-2.286" y2="-1.016" layer="51"/>
@@ -17614,60 +17639,32 @@ Source: http://www2.produktinfo.conrad.com/datenblaetter/700000-724999/705152-da
 <rectangle x1="2.286" y1="1.016" x2="2.794" y2="1.524" layer="51"/>
 <rectangle x1="4.826" y1="1.016" x2="5.334" y2="1.524" layer="51"/>
 </package>
-<package name="SMD5X2">
-<description>&lt;B&gt;JTAG&lt;/B&gt; edge connector</description>
-<smd name="GND@2" x="5.08" y="3.81" dx="1.524" dy="6.477" layer="16"/>
-<smd name="NC@3" x="2.54" y="3.81" dx="1.524" dy="6.477" layer="16"/>
-<smd name="NC@2" x="0" y="3.81" dx="1.524" dy="6.477" layer="16"/>
-<smd name="+3V3" x="-2.54" y="3.81" dx="1.524" dy="6.477" layer="16"/>
-<smd name="GND@1" x="-5.08" y="3.81" dx="1.524" dy="6.477" layer="16"/>
-<smd name="TDI" x="5.08" y="3.81" dx="1.524" dy="6.477" layer="1"/>
-<smd name="NC@1" x="2.54" y="3.81" dx="1.524" dy="6.477" layer="1"/>
-<smd name="TMS" x="0" y="3.81" dx="1.524" dy="6.477" layer="1"/>
-<smd name="TDO" x="-2.54" y="3.81" dx="1.524" dy="6.477" layer="1"/>
-<smd name="TCK" x="-5.08" y="3.81" dx="1.524" dy="6.477" layer="1"/>
-<text x="7.62" y="5.08" size="1.778" layer="25">&gt;NAME</text>
-<text x="7.62" y="2.54" size="1.778" layer="27">&gt;VALUE</text>
-<rectangle x1="-5.842" y1="0.508" x2="-4.318" y2="7.112" layer="34"/>
-<rectangle x1="-5.842" y1="0.508" x2="-4.318" y2="7.112" layer="33"/>
-<rectangle x1="-3.302" y1="0.508" x2="-1.778" y2="7.112" layer="34"/>
-<rectangle x1="-3.302" y1="0.508" x2="-1.778" y2="7.112" layer="33"/>
-<rectangle x1="-0.762" y1="0.508" x2="0.762" y2="7.112" layer="34"/>
-<rectangle x1="-0.762" y1="0.508" x2="0.762" y2="7.112" layer="33"/>
-<rectangle x1="1.778" y1="0.508" x2="3.302" y2="7.112" layer="34"/>
-<rectangle x1="1.778" y1="0.508" x2="3.302" y2="7.112" layer="33"/>
-<rectangle x1="4.318" y1="0.508" x2="5.842" y2="7.112" layer="34"/>
-<rectangle x1="4.318" y1="0.508" x2="5.842" y2="7.112" layer="33"/>
-</package>
 </packages>
 <symbols>
 <symbol name="JTAG5X2">
-<wire x1="3.81" y1="-7.62" x2="-3.81" y2="-7.62" width="0.4064" layer="94"/>
-<wire x1="1.27" y1="0" x2="2.54" y2="0" width="0.6096" layer="94"/>
-<wire x1="1.27" y1="-2.54" x2="2.54" y2="-2.54" width="0.6096" layer="94"/>
-<wire x1="1.27" y1="-5.08" x2="2.54" y2="-5.08" width="0.6096" layer="94"/>
-<wire x1="-2.54" y1="0" x2="-1.27" y2="0" width="0.6096" layer="94"/>
-<wire x1="-2.54" y1="-2.54" x2="-1.27" y2="-2.54" width="0.6096" layer="94"/>
-<wire x1="-2.54" y1="-5.08" x2="-1.27" y2="-5.08" width="0.6096" layer="94"/>
-<wire x1="-3.81" y1="7.62" x2="-3.81" y2="-7.62" width="0.4064" layer="94"/>
-<wire x1="3.81" y1="-7.62" x2="3.81" y2="7.62" width="0.4064" layer="94"/>
-<wire x1="-3.81" y1="7.62" x2="3.81" y2="7.62" width="0.4064" layer="94"/>
-<wire x1="1.27" y1="5.08" x2="2.54" y2="5.08" width="0.6096" layer="94"/>
-<wire x1="1.27" y1="2.54" x2="2.54" y2="2.54" width="0.6096" layer="94"/>
-<wire x1="-2.54" y1="5.08" x2="-1.27" y2="5.08" width="0.6096" layer="94"/>
-<wire x1="-2.54" y1="2.54" x2="-1.27" y2="2.54" width="0.6096" layer="94"/>
+<wire x1="6.35" y1="-7.62" x2="-6.35" y2="-7.62" width="0.4064" layer="94"/>
+<wire x1="-6.35" y1="7.62" x2="-6.35" y2="-7.62" width="0.4064" layer="94"/>
+<wire x1="6.35" y1="-7.62" x2="6.35" y2="7.62" width="0.4064" layer="94"/>
+<wire x1="-6.35" y1="7.62" x2="6.35" y2="7.62" width="0.4064" layer="94"/>
 <text x="-3.81" y="-10.16" size="1.778" layer="96">&gt;VALUE</text>
 <text x="-3.81" y="8.382" size="1.778" layer="95">&gt;NAME</text>
-<pin name="GND@2" x="7.62" y="-5.08" visible="pad" length="middle" direction="pas" swaplevel="1" rot="R180"/>
-<pin name="NC@3" x="7.62" y="-2.54" visible="pad" length="middle" direction="pas" swaplevel="1" rot="R180"/>
-<pin name="NC@2" x="7.62" y="0" visible="pad" length="middle" direction="pas" swaplevel="1" rot="R180"/>
-<pin name="TDI" x="-7.62" y="-5.08" visible="pad" length="middle" direction="pas" swaplevel="1"/>
-<pin name="NC@1" x="-7.62" y="-2.54" visible="pad" length="middle" direction="pas" swaplevel="1"/>
-<pin name="TMS" x="-7.62" y="0" visible="pad" length="middle" direction="pas" swaplevel="1"/>
-<pin name="+3V3" x="7.62" y="2.54" visible="pad" length="middle" direction="pas" swaplevel="1" rot="R180"/>
-<pin name="GND@1" x="7.62" y="5.08" visible="pad" length="middle" direction="pas" swaplevel="1" rot="R180"/>
-<pin name="TDO" x="-7.62" y="2.54" visible="pad" length="middle" direction="pas" swaplevel="1"/>
-<pin name="TCK" x="-7.62" y="5.08" visible="pad" length="middle" direction="pas" swaplevel="1"/>
+<pin name="10" x="10.16" y="-5.08" visible="pad" length="middle" direction="pas" swaplevel="1" rot="R180"/>
+<pin name="8" x="10.16" y="-2.54" visible="pad" length="middle" direction="pas" swaplevel="1" rot="R180"/>
+<pin name="6" x="10.16" y="0" visible="pad" length="middle" direction="pas" swaplevel="1" rot="R180"/>
+<pin name="9" x="-10.16" y="-5.08" visible="pad" length="middle" direction="pas" swaplevel="1"/>
+<pin name="7" x="-10.16" y="-2.54" visible="pad" length="middle" direction="pas" swaplevel="1"/>
+<pin name="5" x="-10.16" y="0" visible="pad" length="middle" direction="pas" swaplevel="1"/>
+<pin name="4" x="10.16" y="2.54" visible="pad" length="middle" direction="pas" swaplevel="1" rot="R180"/>
+<pin name="2" x="10.16" y="5.08" visible="pad" length="middle" direction="pas" swaplevel="1" rot="R180"/>
+<pin name="3" x="-10.16" y="2.54" visible="pad" length="middle" direction="pas" swaplevel="1"/>
+<pin name="1" x="-10.16" y="5.08" visible="pad" length="middle" direction="pas" swaplevel="1"/>
+<text x="-4.445" y="4.445" size="1.27" layer="94">TCK</text>
+<text x="-4.445" y="1.905" size="1.27" layer="94">TDO</text>
+<text x="-4.445" y="-0.635" size="1.27" layer="94">TMS</text>
+<text x="-4.445" y="-5.715" size="1.27" layer="94">TDI</text>
+<text x="0.635" y="-5.715" size="1.27" layer="94">GND</text>
+<text x="0.635" y="4.445" size="1.27" layer="94">GND</text>
+<text x="0.635" y="1.905" size="1.27" layer="94">VCC</text>
 </symbol>
 </symbols>
 <devicesets>
@@ -17679,16 +17676,16 @@ Source: http://www2.produktinfo.conrad.com/datenblaetter/700000-724999/705152-da
 <devices>
 <device name="A" package="PH5X2">
 <connects>
-<connect gate="G$1" pin="+3V3" pad="NC@1"/>
-<connect gate="G$1" pin="GND@1" pad="TDI"/>
-<connect gate="G$1" pin="GND@2" pad="TCK"/>
-<connect gate="G$1" pin="NC@1" pad="+3V3"/>
-<connect gate="G$1" pin="NC@2" pad="TMS"/>
-<connect gate="G$1" pin="NC@3" pad="TDO"/>
-<connect gate="G$1" pin="TCK" pad="GND@2"/>
-<connect gate="G$1" pin="TDI" pad="GND@1"/>
-<connect gate="G$1" pin="TDO" pad="NC@3"/>
-<connect gate="G$1" pin="TMS" pad="NC@2"/>
+<connect gate="G$1" pin="1" pad="1"/>
+<connect gate="G$1" pin="10" pad="10"/>
+<connect gate="G$1" pin="2" pad="2"/>
+<connect gate="G$1" pin="3" pad="3"/>
+<connect gate="G$1" pin="4" pad="4"/>
+<connect gate="G$1" pin="5" pad="5"/>
+<connect gate="G$1" pin="6" pad="6"/>
+<connect gate="G$1" pin="7" pad="7"/>
+<connect gate="G$1" pin="8" pad="8"/>
+<connect gate="G$1" pin="9" pad="9"/>
 </connects>
 <technologies>
 <technology name="">
@@ -17701,16 +17698,16 @@ Source: http://www2.produktinfo.conrad.com/datenblaetter/700000-724999/705152-da
 </device>
 <device name="B" package="SMD5X2">
 <connects>
-<connect gate="G$1" pin="+3V3" pad="NC@1"/>
-<connect gate="G$1" pin="GND@1" pad="TDI"/>
-<connect gate="G$1" pin="GND@2" pad="TCK"/>
-<connect gate="G$1" pin="NC@1" pad="+3V3"/>
-<connect gate="G$1" pin="NC@2" pad="TMS"/>
-<connect gate="G$1" pin="NC@3" pad="TDO"/>
-<connect gate="G$1" pin="TCK" pad="GND@2"/>
-<connect gate="G$1" pin="TDI" pad="GND@1"/>
-<connect gate="G$1" pin="TDO" pad="NC@3"/>
-<connect gate="G$1" pin="TMS" pad="NC@2"/>
+<connect gate="G$1" pin="1" pad="1"/>
+<connect gate="G$1" pin="10" pad="10"/>
+<connect gate="G$1" pin="2" pad="2"/>
+<connect gate="G$1" pin="3" pad="3"/>
+<connect gate="G$1" pin="4" pad="4"/>
+<connect gate="G$1" pin="5" pad="5"/>
+<connect gate="G$1" pin="6" pad="6"/>
+<connect gate="G$1" pin="7" pad="7"/>
+<connect gate="G$1" pin="8" pad="8"/>
+<connect gate="G$1" pin="9" pad="9"/>
 </connects>
 <technologies>
 <technology name=""/>
@@ -17865,7 +17862,7 @@ Source: www.pletronics.com .. sm77h%203.3v.pdf</description>
 <part name="C8" library="rcl" deviceset="CPOL-EU" device="C" value="100u"/>
 <part name="+3V9" library="supply1" deviceset="+3V3" device=""/>
 <part name="GND10" library="supply1" deviceset="GND" device=""/>
-<part name="X1" library="crystal" deviceset="SM77H" device="" value="50MHz"/>
+<part name="X1" library="crystal" deviceset="SM77H" device="" value="25MHz"/>
 </parts>
 <sheets>
 <sheet>
@@ -17913,8 +17910,8 @@ PCB by Luciano Sturaro</text>
 <instance part="GND6" gate="1" x="109.22" y="17.78"/>
 <instance part="C4" gate="G$1" x="88.9" y="228.6" rot="R180"/>
 <instance part="GND7" gate="1" x="20.32" y="17.78"/>
-<instance part="GND32" gate="1" x="195.58" y="208.28"/>
-<instance part="P+24" gate="VCC" x="198.12" y="238.76"/>
+<instance part="GND32" gate="1" x="170.18" y="208.28"/>
+<instance part="P+24" gate="VCC" x="167.64" y="238.76"/>
 <instance part="R4" gate="G$1" x="175.26" y="81.28" rot="R90"/>
 <instance part="R5" gate="G$1" x="167.64" y="81.28" rot="R90"/>
 <instance part="+3V4" gate="G$1" x="170.18" y="93.98"/>
@@ -18720,9 +18717,9 @@ PCB by Luciano Sturaro</text>
 </segment>
 <segment>
 <pinref part="P+24" gate="VCC" pin="VCC"/>
-<wire x1="190.5" y1="223.52" x2="198.12" y2="223.52" width="0.1524" layer="91"/>
-<wire x1="198.12" y1="223.52" x2="198.12" y2="236.22" width="0.1524" layer="91"/>
-<pinref part="JT1" gate="G$1" pin="NC@1"/>
+<wire x1="167.64" y1="228.6" x2="167.64" y2="236.22" width="0.1524" layer="91"/>
+<pinref part="JT1" gate="G$1" pin="4"/>
+<wire x1="172.72" y1="228.6" x2="167.64" y2="228.6" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="GND" class="1">
@@ -18838,14 +18835,14 @@ PCB by Luciano Sturaro</text>
 <junction x="20.32" y="30.48"/>
 </segment>
 <segment>
-<wire x1="190.5" y1="220.98" x2="195.58" y2="220.98" width="0.1524" layer="91"/>
-<wire x1="195.58" y1="220.98" x2="195.58" y2="210.82" width="0.1524" layer="91"/>
 <pinref part="GND32" gate="1" pin="GND"/>
-<wire x1="190.5" y1="231.14" x2="195.58" y2="231.14" width="0.1524" layer="91"/>
-<wire x1="195.58" y1="231.14" x2="195.58" y2="220.98" width="0.1524" layer="91"/>
-<junction x="195.58" y="220.98"/>
-<pinref part="JT1" gate="G$1" pin="TDI"/>
-<pinref part="JT1" gate="G$1" pin="TCK"/>
+<wire x1="170.18" y1="231.14" x2="170.18" y2="220.98" width="0.1524" layer="91"/>
+<pinref part="JT1" gate="G$1" pin="2"/>
+<wire x1="170.18" y1="220.98" x2="170.18" y2="210.82" width="0.1524" layer="91"/>
+<wire x1="170.18" y1="231.14" x2="172.72" y2="231.14" width="0.1524" layer="91"/>
+<pinref part="JT1" gate="G$1" pin="10"/>
+<wire x1="172.72" y1="220.98" x2="170.18" y2="220.98" width="0.1524" layer="91"/>
+<junction x="170.18" y="220.98"/>
 </segment>
 <segment>
 <pinref part="SD2" gate="G$1" pin="GND"/>
@@ -18959,9 +18956,9 @@ PCB by Luciano Sturaro</text>
 <pinref part="IC3" gate="G$1" pin="TMS"/>
 </segment>
 <segment>
-<wire x1="165.1" y1="226.06" x2="175.26" y2="226.06" width="0.1524" layer="91"/>
-<label x="165.1" y="226.06" size="1.778" layer="95"/>
-<pinref part="JT1" gate="G$1" pin="NC@2"/>
+<pinref part="JT1" gate="G$1" pin="5"/>
+<wire x1="200.66" y1="226.06" x2="193.04" y2="226.06" width="0.1524" layer="91"/>
+<label x="200.66" y="226.06" size="1.778" layer="95" ratio="10"/>
 </segment>
 </net>
 <net name="TDI" class="0">
@@ -18972,9 +18969,9 @@ PCB by Luciano Sturaro</text>
 <pinref part="IC3" gate="G$1" pin="TDI"/>
 </segment>
 <segment>
-<wire x1="165.1" y1="231.14" x2="175.26" y2="231.14" width="0.1524" layer="91"/>
-<label x="165.1" y="231.14" size="1.778" layer="95"/>
-<pinref part="JT1" gate="G$1" pin="GND@1"/>
+<pinref part="JT1" gate="G$1" pin="9"/>
+<wire x1="200.66" y1="220.98" x2="193.04" y2="220.98" width="0.1524" layer="91"/>
+<label x="200.66" y="220.98" size="1.778" layer="95" ratio="10"/>
 </segment>
 </net>
 <net name="TCK" class="0">
@@ -18985,9 +18982,9 @@ PCB by Luciano Sturaro</text>
 <pinref part="IC3" gate="G$1" pin="TCK"/>
 </segment>
 <segment>
-<wire x1="165.1" y1="220.98" x2="175.26" y2="220.98" width="0.1524" layer="91"/>
-<label x="165.1" y="220.98" size="1.778" layer="95"/>
-<pinref part="JT1" gate="G$1" pin="GND@2"/>
+<pinref part="JT1" gate="G$1" pin="1"/>
+<wire x1="200.66" y1="231.14" x2="193.04" y2="231.14" width="0.1524" layer="91"/>
+<label x="200.66" y="231.14" size="1.778" layer="95" ratio="10"/>
 </segment>
 </net>
 <net name="+3V3" class="1">
@@ -19183,15 +19180,15 @@ PCB by Luciano Sturaro</text>
 </net>
 <net name="TDO" class="0">
 <segment>
-<wire x1="165.1" y1="223.52" x2="175.26" y2="223.52" width="0.1524" layer="91"/>
-<label x="165.1" y="223.52" size="1.778" layer="95"/>
-<pinref part="JT1" gate="G$1" pin="NC@3"/>
-</segment>
-<segment>
 <wire x1="119.38" y1="210.82" x2="119.38" y2="236.22" width="0.1524" layer="91"/>
 <wire x1="127" y1="236.22" x2="119.38" y2="236.22" width="0.1524" layer="91"/>
 <label x="124.46" y="236.22" size="1.778" layer="95"/>
 <pinref part="IC3" gate="G$1" pin="TDO"/>
+</segment>
+<segment>
+<pinref part="JT1" gate="G$1" pin="3"/>
+<wire x1="200.66" y1="228.6" x2="193.04" y2="228.6" width="0.1524" layer="91"/>
+<label x="200.66" y="228.6" size="1.778" layer="95" ratio="10"/>
 </segment>
 </net>
 <net name="SD_CS1" class="0">
@@ -19370,17 +19367,18 @@ PCB by Luciano Sturaro</text>
 </sheet>
 </sheets>
 <errors>
-<approved hash="102,1,241.3,134.62,+5V,VCC,,,,"/>
-<approved hash="102,1,241.3,132.08,+5V,VCC,,,,"/>
+<approved hash="102,1,215.9,124.46,+5V,VCC,,,,"/>
+<approved hash="102,1,215.9,121.92,+5V,VCC,,,,"/>
 <approved hash="102,1,182.88,38.1,VSS1,GND,,,,"/>
 <approved hash="102,1,182.88,40.64,VDD,+3V3,,,,"/>
 <approved hash="102,1,182.88,35.56,VSS2,GND,,,,"/>
 <approved hash="102,1,241.3,38.1,VSS1,GND,,,,"/>
 <approved hash="102,1,241.3,40.64,VDD,+3V3,,,,"/>
 <approved hash="102,1,241.3,35.56,VSS2,GND,,,,"/>
-<approved hash="202,1,271.78,170.18,JP1,!BUSDIR,,,,"/>
-<approved hash="103,1,325.12,162.56,IC1NC1,NC,GND,,,"/>
+<approved hash="202,1,246.38,160.02,JP1,!BUSDIR,,,,"/>
 <approved hash="103,1,325.12,157.48,IC1NC2,NC,GND,,,"/>
+<approved hash="202,1,22.86,93.98,X1,E/D,,,,"/>
+<approved hash="104,1,22.86,96.52,X1,VCC,+3V3,,,"/>
 <approved hash="206,1,71.12,243.84,+3V3,,,,,"/>
 <approved hash="206,1,71.12,241.3,+3V3,,,,,"/>
 <approved hash="208,1,101.6,246.38,+3V3,sup,,,,"/>
@@ -19388,24 +19386,21 @@ PCB by Luciano Sturaro</text>
 <approved hash="208,1,71.12,241.3,+3V3,out,,,,"/>
 <approved hash="208,1,182.88,40.64,+3V3,sup,,,,"/>
 <approved hash="208,1,167.64,40.64,+3V3,sup,,,,"/>
-<approved hash="208,1,35.56,53.34,+3V3,sup,,,,"/>
+<approved hash="208,1,109.22,68.58,+3V3,sup,,,,"/>
 <approved hash="208,1,170.18,91.44,+3V3,sup,,,,"/>
 <approved hash="208,1,241.3,40.64,+3V3,sup,,,,"/>
 <approved hash="208,1,226.06,40.64,+3V3,sup,,,,"/>
 <approved hash="208,1,228.6,91.44,+3V3,sup,,,,"/>
+<approved hash="208,1,38.1,71.12,+3V3,sup,,,,"/>
+<approved hash="208,1,340.36,170.18,+3V3,sup,,,,"/>
+<approved hash="208,1,17.78,101.6,+3V3,sup,,,,"/>
 <approved hash="105,0,?,?,+12V,,,,,"/>
 <approved hash="105,0,?,?,-12V,,,,,"/>
-<approved hash="106,1,271.78,152.4,CPU_MREQ,,,,,"/>
+<approved hash="106,1,246.38,142.24,CPU_MREQ,,,,,"/>
 <approved hash="206,1,182.88,58.42,SD_MISO,,,,,"/>
 <approved hash="206,1,241.3,58.42,SD_MISO,,,,,"/>
 <approved hash="115,1,194.206,131.976,FRAME1,,,,,"/>
-<approved hash="117,1,274.32,144.78,CPU_RD,,,,,"/>
-<approved hash="117,1,274.32,149.86,CPU_IORQ,,,,,"/>
-<approved hash="117,1,274.32,160.02,RESET,,,,,"/>
-<approved hash="117,1,274.32,147.32,CPU_WR,,,,,"/>
-<approved hash="117,1,274.32,154.94,CLOCK,,,,,"/>
-<approved hash="117,1,274.32,134.62,SLTSL,,,,,"/>
-<approved hash="117,1,274.32,162.56,CPU_M1,,,,,"/>
+<approved hash="115,1,182.88,227.525,JT1,,,,,"/>
 </errors>
 </schematic>
 </drawing>

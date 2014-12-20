@@ -384,7 +384,7 @@ loadFile:
 	jp		nz, printErro				; oops! Error writing bytes. Show Error and exit.
 
 	ld		de, strPonto
-	call	print						; show '.' for 16 K page loaded
+	call	print						; show '*' for 16 K page loaded
 	pop		bc
 	ld		a, (actualpage)
 	inc		a
@@ -1116,7 +1116,7 @@ strApagarFlash:
 	.db		'$'
 
 strPonto:
-	.db		'.$'
+	.db		'*$'
 
 strGravando:
 	.dw 	13, 10
