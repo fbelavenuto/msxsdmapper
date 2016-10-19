@@ -8,6 +8,7 @@ NET "wr_n"  LOC = "p74"  ;
 NET "sltsl_n"  LOC = "p78"  ; 
 NET "iorq_n"  LOC = "p73"  ; 
 NET "m1_n"  LOC = "p77"  ; 
+NET "busdir_n" LOC = "p12";
 NET "addr_bus<0>"  LOC = "p61"  ; 
 NET "addr_bus<1>"  LOC = "p60"  ; 
 NET "addr_bus<2>"  LOC = "p59"  ; 

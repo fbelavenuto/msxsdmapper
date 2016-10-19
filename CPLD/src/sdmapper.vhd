@@ -36,6 +36,7 @@ entity sdmapper is
 		iorq_n			: in    std_logic;
 		m1_n				: in    std_logic;
 		sltsl_n			: in    std_logic;
+		busdir_n			: out   std_logic;
 
 		-- ROM interface
 		rom_a				: out   std_logic_vector(16 downto 14);
@@ -138,7 +139,8 @@ begin
 		sltsl_n		=> sltsl_ram,
 		sram_ma		=> ram_a,
 		sram_cs_n	=> ram_cs,
-		sram_we_n	=> ram_we
+		sram_we_n	=> ram_we,
+		busdir_n		=> busdir_n
 	);
 
 	-- Glue Logic
@@ -164,7 +166,7 @@ begin
 		if reset_n = '0' then
 			rom_wr_en <= '0';
 			rom_adhi  <= (others => '0');
-		elsif rising_edge(fw_en) then
+		elsif falling_edge(fw_en) then
 			rom_wr_en	<= data_bus(7);
 			rom_adhi		<= data_bus(2 downto 0);
 		end if;
@@ -180,7 +182,7 @@ begin
 	begin
 		if reset_n = '0' then 
 			mr_addr <= (OTHERS => '0');
-		elsif rising_edge(rom_chav) then
+		elsif falling_edge(rom_chav) then
 			mr_addr <= data_bus(2 downto 0);
 		end if;
 	end process;
@@ -211,7 +213,7 @@ begin
 	begin
 		if reset_n = '0' then 
 			sd_en		<= '0';
-		elsif rising_edge(sd_chav) then
+		elsif falling_edge(sd_chav) then
 			sd_en		<= data_bus(0);
 		end if;
 	end process;

@@ -47,7 +47,7 @@ begin
 	begin
 		if (reset_n = '0') then				-- Zerar registrador do expansor em um reset
 			exp_reg <= X"00";
-		elsif (rising_edge(exp_wr)) then	-- Escrita no endereco &HFFFF
+		elsif (falling_edge(exp_wr)) then	-- Escrita no endereco &HFFFF
 			exp_reg <= cpu_d;
 		end if;
  	end process;

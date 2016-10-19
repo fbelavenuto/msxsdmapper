@@ -32,7 +32,8 @@ entity megamapper is
 		sltsl_n		: in    std_logic;								-- /SLTSL do slot/subslot da RAM
 		sram_ma		: out   std_logic_vector(5 downto 0);		-- Saida do banco para SRAM
 		sram_cs_n	: out   std_logic;								-- Saida de selecao para SRAM
-		sram_we_n	: out   std_logic									-- Saida de escrita para SRAM
+		sram_we_n	: out   std_logic;								-- Saida de escrita para SRAM
+		busdir_n		: out   std_logic
 	);
 end entity;
 
@@ -75,16 +76,23 @@ begin
 	reg_wr_addr	<= unsigned(cpu_a(14 downto 13)) when mr_mp = '0' else unsigned(cpu_a( 1 downto  0));
 
 	-- Escrita dos registros da mapper ou megaram
-	process (reg_wr)
+	process (reset_n, reg_wr)
 	begin
-		if rising_edge(reg_wr) then
+		if reset_n = '0' then
+			ram_q(0) <= "000000";
+			ram_q(1) <= "000001";
+			ram_q(2) <= "000010";
+			ram_q(3) <= "000011";
+		elsif falling_edge(reg_wr) then
 			ram_q(to_integer(reg_wr_addr)) <= cpu_d(5 downto 0);
 		end if;
 	end process;
 
 	-- Leitura do registro da mapper (megaram nao tem leitura de registro)
 	cpu_d		<= (others => 'Z') when mp_rd = '0' 	else 
-					"000" & ram_q(to_integer(unsigned(cpu_a(1 downto 0))))(4 downto 0);
+					"111" & ram_q(to_integer(unsigned(cpu_a(1 downto 0))))(4 downto 0);
+
+	busdir_n <= not mp_rd;
 
 	-- Multiplex do endereco alto da SRAM
 	sram_ma	<= ram_q(to_integer(unsigned(cpu_a(15 downto 14))))(4 downto 0) & cpu_a(13) when mr_mp = '1' else		-- Mapper
