@@ -56,7 +56,7 @@ DEBUG	equ	0	;Set to 1 for debugging, 0 to normal operation
 
 VER_MAIN	equ	1
 VER_SEC		equ	0
-VER_REV		equ	5
+VER_REV		equ	6
 
 ;-----------------------------------------------------------------------------
 ; Enderecos SPI
@@ -365,8 +365,9 @@ DRV_INIT:
 	ret	z		; Yes, return
 
 ; 2nd call: 
-	call	MYSETSCR
+	call	MYSETSCR		; Set the screen mode
 	call	pegaWorkArea		; HL=IY=Work area pointer
+
 	ld	de,strTitle		; prints the title 
 	call	printString
 
@@ -498,40 +499,6 @@ SDMAPPERINIT:		; This block is exclusive for the SD-Mapper
 	ld	de, strMegaram		; Megaram ativa
 .print:
 	jp	printString
-
-MYSETSCR:	; Restore screen parameters on MSX>=2 if they're not set yet
-	ld	a,(MSXVER)
-	or	a			; MSX1?
-	ret	z			; Yes, return
-
-	ld	c,$23			; Block-2, R#3
-	ld 	ix,REDCLK
-	call	EXTROM
-	and	1
-	ld	b,a
-	ld	a,(SCRMOD)
-	cp	b
-	jr	nz,.restore
-	inc	c
-	ld 	ix,REDCLK
-	call	EXTROM
-	ld	b,a
-	inc	c
-	ld 	ix,REDCLK
-	call	EXTROM
-	add	a,a
-	add	a,a
-	add	a,a
-	add	a,a
-	or	b
-	ld	b,a
-	ld	a,(LINLEN)
-	cp	b
-	ret	z
-.restore:
-	xor	a		; Don't displat the function keys
-	ld	ix,SDFSCR
-	jp	EXTROM
 
 ;-----------------------------------------------------------------------------
 ;
@@ -1341,16 +1308,25 @@ lerBlocoCxD:
 	ret	c
 	call	WAIT_RESP_FE
 	ret	c
-	ld	de, PORTSPI
 	ex	de,hl
+
+	; Check for a Z80 or R800
+;	or 	a		; Clear Cy
+	ld	a,20
+	db	#ED,#F9		; mulub a,a
+	ld	hl, PORTSPI
+	jr	c,.r800		; Use LDIR for R800
 	.16	ldi	; 16 vezes o opcode LDI
-	nop
-	ld	a, (hl)
-	nop
+.end:	ld	a, (hl)
 	ld	a, (hl)		; byte de resposta
 	or	a
 	ex	de,hl
 	jr		desabilitaSDs
+
+.r800:
+	ld	bc,16
+	ldir
+	jr	.end
 
 ; ------------------------------------------------
 ; Algoritmo para inicializar um cartao SD
@@ -1473,16 +1449,12 @@ SD_SEND_CMD:
 	ld	(PORTSPI), a
 	push	af
 	ld	a, b
-	nop
 	ld	(PORTSPI), a
 	ld	a, c
-	nop
 	ld	(PORTSPI), a
 	ld	a, d
-	nop
 	ld	(PORTSPI), a
 	ld	a, e
-	nop
 	ld	(PORTSPI), a
 	pop	af
 	cp	CMD0
@@ -1587,62 +1559,82 @@ GravarBloco:
 	call	SD_SEND_CMD_GET_ERROR
 	pop	de
 	pop	bc
-	jp	c,.erro		; erro no ACMD23
+	jp	c,terminaLeituraEscritaBloco	; erro no ACMD23
 	ld	a, CMD25	; comando CMD25 = write multiple blocks
 	call	SD_SEND_CMD_GET_ERROR
-	jp	c,.erro		; erro
+	jp	c,terminaLeituraEscritaBloco	; erro
 .loop:
 	ld	a, $FC		; mandar $FC para indicar que os proximos dados sao
 	ld	(PORTSPI),a	; dados para gravacao
+	; Check for a Z80 or R800
+	ex	de,hl
+;	or 	a		; Clear Cy
+	ld	a,20
+	db	#ED,#F9		; mulub a,a
+	ex	de,hl
 	ld	de, PORTSPI
+	jp	c,.r800m	; Use LDIR for R800
 	.512	ldi		; 512 vezes o opcode LDI
+.part2m:
 	ld	a, $FF		; envia dummy CRC
 	ld	(PORTSPI),a
-	nop
 	ld	(PORTSPI),a
 	call	WAIT_RESP_NO_FF	; esperar cartao
 	and	$1F		; testa bits erro
 	cp	5
-	jr	nz,.erro	; resposta errada, informar erro
+	scf
+	jp	nz,terminaLeituraEscritaBloco	; resposta errada, informar erro
 	call	WAIT_RESP_NO_00	; esperar cartao
-	jr	c,.erro
+	jp	c,terminaLeituraEscritaBloco
 	ld	a, (iy+NUMBLOCOS)	; testar se tem mais blocos para gravar
 	dec	a
 	ld	(iy+NUMBLOCOS), a
 	jp	nz,.loop
 	ld	a, (PORTSPI)	; acabou os blocos, fazer 2 dummy reads
-	nop
 	ld	a, (PORTSPI)
 	ld	a, $FD		; enviar $FD para informar ao cartao que acabou os dados
 	ld	(PORTSPI),a
-	nop
-	nop
 	ld	a, (PORTSPI)	; dummy reads
-	nop
 	ld	a, (PORTSPI)
 	call	WAIT_RESP_NO_00	; esperar cartao
 	jp	.fim		; CMD25 concluido, sair informando nenhum erro
 
+.r800m:	ld	bc,512
+	ldir
+	jr	.part2m
+
+.r800s:	ld	bc,512
+	ldir
+	jp	.part2s
+
 .umBloco:
 	ld	a, CMD24	; gravar somente um bloco com comando CMD24 = Write Single Block
 	call	SD_SEND_CMD_GET_ERROR
-	jr	nc,.ok
-.erro:
-	scf			; informar erro
-	jp	terminaLeituraEscritaBloco
-.ok:
+	jp	c,terminaLeituraEscritaBloco	; erro
+
 	ld	a, $FE		; mandar $FE para indicar que vamos mandar dados para gravacao
 	ld	(PORTSPI),a
+
+	; Check for a Z80 or R800
+	ex	de,hl
+;	or 	a		; Clear Cy
+	ld	a,20
+	db	#ED,#F9		; mulub a,a
+	ex	de,hl
 	ld	de, PORTSPI
+	jr	c,.r800s	; Use LDIR for R800
 	.512	ldi
+.part2s:
+	ld	bc,512
+	ldir
 	ld	a, $FF		; envia dummy CRC
 	ld	(PORTSPI),a
-	nop
 	ld	(PORTSPI),a
 	call	WAIT_RESP_NO_FF	; esperar cartao
 	and	$1F		; testa bits erro
 	cp	5
-	jp	nz,.erro	; resposta errada, informar erro
+	scf
+	jp	nz,terminaLeituraEscritaBloco	; resposta errada, informar erro
 .esp:
 	call	WAIT_RESP_NO_FF	; esperar cartao
 	or	a
@@ -1655,6 +1647,7 @@ terminaLeituraEscritaBloco:
 	pop	af
 	ret
 
+
 ; ------------------------------------------------
 ; Ler um bloco de 512 bytes do cartao
 ; HL aponta para o inicio dos dados
@@ -1666,6 +1659,9 @@ LerBloco:
 	or	a
 	call	z,blocoParaByte	; se for SDV1 coverter blocos para bytes
 	call	setaSDAtual
+
+
+
 	ld	a, (iy+NUMBLOCOS)	; testar se Nextor quer ler um ou mais blocos
 	dec	a
 	jp	z,.umBloco	; somente um bloco, pular
@@ -1673,17 +1669,21 @@ LerBloco:
 ; multiplos blocos
 	ld	a, CMD18	; ler multiplos blocos com CMD18 = Read Multiple Blocks
 	call	SD_SEND_CMD_GET_ERROR
-	jp	c,.erro
+	jp	c,terminaLeituraEscritaBloco
 .loop:
 	call	WAIT_RESP_FE
-	jp	c,.erro
-	ld	de, PORTSPI
+	jp	c,terminaLeituraEscritaBloco
 	ex	de,hl
+	; Check for a Z80 or R800
+;	or 	a		; Clear Cy
+	ld	a,20
+	db	#ED,#F9		; mulub a,a
+	ld	hl, PORTSPI
+	jp	c,.r800m	; Use LDIR for R800
 	.512	ldi
+.part2m:
 	ex	de,hl
-	nop
 	ld	a, (PORTSPI)	; descarta CRC
-	nop
 	ld	a, (PORTSPI)
 	ld	a, (iy+NUMBLOCOS)	; testar se tem mais blocos para ler
 	dec	a
@@ -1691,29 +1691,39 @@ LerBloco:
 	jp	nz,.loop
 	ld	a, CMD12	; acabou os blocos, mandar CMD12 para cancelar leitura
 	call	SD_SEND_CMD_NO_ARGS
-	jp		.fim
+	jp	.fim
+
+.r800m: ld	bc,512
+	ldir
+	jr	.part2m
+
+.r800s:	ld	bc,512
+	ldir
+	jp	.part2s
 
 .umBloco:
 	ld	a, CMD17	; ler somente um bloco com CMD17 = Read Single Block
 	call	SD_SEND_CMD_GET_ERROR
-	jr	nc,.ok
-.erro:
-	scf
-	jp		terminaLeituraEscritaBloco
-.ok:
+	jp	c,terminaLeituraEscritaBloco
+
 	call	WAIT_RESP_FE
-	jr	c,.erro
-	ld	de, PORTSPI
+	jp	c,terminaLeituraEscritaBloco
 	ex	de,hl
+
+	; Check for a Z80 or R800
+;	or 	a		; Clear Cy
+	ld	a,20
+	db	#ED,#F9		; mulub a,a
+	ld	hl, PORTSPI
+	jr	c,.r800s	; Use LDIR for R800
 	.512	ldi
+.part2s:
 	ex	de,hl
-	nop
 	ld	a, (PORTSPI)	; descarta CRC
-	nop
-	ld	a, (PORTSPI)
 .fim:
 	xor	a		; zera carry para informar leitura sem erros
-	jp		terminaLeituraEscritaBloco
+	jp	terminaLeituraEscritaBloco
+
 
 ; ------------------------------------------------
 ; Converte blocos para bytes. Na pratica faz
@@ -1895,7 +1905,6 @@ pegaFabricante:
 	ld	b, 0
 	ret
 
-; ---------------------------------------------------------------------------
 tblFabricantes:
 	db	1
 	db	"Panasonic",0
@@ -1936,7 +1945,48 @@ tblFabricantes:
 	db	0
 	db	"Generico",0
 
+
 ; ------------------------------------------------
+; Restore screen parameters on MSX>=2 if they're
+; not set yet
+; ------------------------------------------------
+MYSETSCR:
+	ld	a,(MSXVER)
+	or	a			; MSX1?
+	jp	z,INITXT		; Yes, change do screen-0
+
+	ld	c,$23			; Block-2, R#3
+	ld 	ix,REDCLK
+	call	EXTROM
+	and	1
+	ld	b,a
+	ld	a,(SCRMOD)
+	cp	b
+	jr	nz,.restore
+	inc	c
+	ld 	ix,REDCLK
+	call	EXTROM
+	ld	b,a
+	inc	c
+	ld 	ix,REDCLK
+	call	EXTROM
+	add	a,a
+	add	a,a
+	add	a,a
+	add	a,a
+	or	b
+	ld	b,a
+	ld	a,(LINLEN)
+	cp	b
+	ret	z
+.restore:
+	xor	a		; Don't displat the function keys
+	ld	ix,SDFSCR
+	jp	EXTROM
+
+
+
+; ==========================================================================
 strTitle:
 	db	"FBLabs SDHC driver "
 	db	"v",VER_MAIN+$30,'.',VER_SEC+$30,'.',VER_REV+$30
