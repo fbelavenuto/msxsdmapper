@@ -48,7 +48,7 @@ DRV_TYPE	equ	1
 ;   0 for no hot-plug support
 ;   1 for hot-plug support
 
-DRV_HOTPLUG	equ	0
+DRV_HOTPLUG	equ	1
 
 DEBUG	equ	0	;Set to 1 for debugging, 0 to normal operation
 
@@ -59,11 +59,11 @@ VER_SEC		equ	0
 VER_REV		equ	6
 
 ;-----------------------------------------------------------------------------
-; Enderecos SPI
+; SPI addresses. Check the Technical info above for the bit contents
 
-CHAVEIASPI	= $6001
-PORTCFG		= $4800
-PORTSPI		= $4000
+CHAVEIASPI	= $6001 ; Mode config register
+PORTCFG		= $4800	; Interface status and card select register 
+PORTSPI		= $4000	; SPI data port
 
 ; Comandos SPI:
 CMD0	= 0  | $40
@@ -82,18 +82,19 @@ CMD58	= 58 | $40
 ACMD23	= 23 | $40
 ACMD41	= 41 | $40
 
-; Offsets da area de trabalho
-
-BCSD 		= 0
-BCID1		= 16
-BCID2		= 32
-NUMSD		= 48	; 1 se cartao 1, 2 se cartao 2
-FLAGSCARTAO	= 49	; Flag indicando se houve mudanca ou erro de cartao
-NUMBLOCOS	= 50	; 1 byte
-TEMP		= 52	; 1 byte
-BLOCOS1		= 56	; 3 bytes
-BLOCOS2		= 60	; 3 bytes
-
+; Work area variables 
+ STRUCT WRKAREA
+BCSD 		ds 16	; Card Specific Data
+BCID1		ds 16	; Card-ID of card1
+BCID2		ds 16	; Card-ID of card2
+NUMSD		db 	; Currently selected card: 1 or 2 
+CARDFLAGS	db 	; Flags that indicate card-change or card error 
+NUMBLOCKS	db 	; Number of blocks in multi-block operations 
+BLOCKS1		ds 3	; 3 bytes. Size of card1, in blocks.
+BLOCKS2		ds 3	; 3 bytes. Size of card2, in blocks.
+TEMP		db	; Temporary data
+TRLDIR		ds 8	; R800 data transfer helper 
+ ENDS
 
 
 ;-----------------------------------------------------------------------------
@@ -361,9 +362,19 @@ DRV_TIMI:
 
 DRV_INIT:
 	or	a		; Is this the 1st call? 
-	ld	hl, 64		; 64 bytes of work area is needed 
-	ret	z		; Yes, return
+	jr	nz,.call2
+; 1st call:
+	ld	hl,WRKAREA.TRLDIR ; size of work area are needed for Z80
+	ld	a,(MSXVER)
+	cp	3		; MSX Turbo-R?
+	ccf
+	ret	nc		; No, return with Cy off
+	ld	hl,WRKAREA	; size of work area are needed for TR
+	or	a		; Clear Cy
+	ret
 
+
+.call2:
 ; 2nd call: 
 	call	MYSETSCR		; Set the screen mode
 	call	pegaWorkArea		; HL=IY=Work area pointer
@@ -373,9 +384,10 @@ DRV_INIT:
 
 	call	SDMAPPERINIT		; SD-Mapper exclusive init
 
-SDHCDEVINIT:	; FBLabs SDHC Interface initialization
+.sdhcinit:	; FBLabs SDHC Interface initialization
 	xor	a			; zera flags do cartao
-	ld	(iy+FLAGSCARTAO), a
+	ld	(iy+WRKAREA.CARDFLAGS), a
+
 	ld	a, 1			; detectar cartao 1
 	call	.detecta
 	ld	a, 2			; detectar cartao 2
@@ -384,68 +396,25 @@ SDHCDEVINIT:	; FBLabs SDHC Interface initialization
 	ld	e, 5
 	call	modoROM
 
-.chkStop: ; Check if the STOP key was signaled
-	ld	a,(INTFLG)
-	cp	4			; Was STOP pressed?
-	jr	nz,.end			; No, quit as fast as possible 
+	call	INSTR800HLP		; Install R800 data copy on workarea
 
-	; Handle STOP to pause and read messages, and ask for the copyright info
-	ld	de,strBootpaused
-	call	printString
-.wait1:	ld	a,7
-	call	SNSMAT
-	and	$10			; Is STOP still pressed?
-	jr	z,.wait1		; Wait for STOP to be released
-	xor	a
-	ld	(INTFLG),a		; Clear STOP flag
-	ld	b,0			; b=inhibit 'i' key flag
-.wait2: call	CHSNS
-	call	nz,.chkikey		; Wait until a key is pressed
-	ld	a,(INTFLG)
-	cp	4			; Was STOP pressed?
-	jr	nz,.wait2		; No, return
-	xor	a
-	ld	(INTFLG),a		; Clear STOP flag
-	call	KILBUF
-	ld	b,30			; Since the user is trying pause the
-.wait3:	halt				; boot messages, this gives him enough
-					; time to react and pause the next
-					; driver
-	ld	a,(INTFLG)
-	cp	4			; Was STOP pressed?
-	jr	z,.end			; quit so the next driver can process it
-	djnz	.wait3			; The user will have the impression
-					; that he has a perfect timing.   ;)
+	call	INICHKSTOP		; Check if the STOP key was pressed
 
-
-.end:	ld	de, strCrLf
-	jp	printString
-
-.chkikey:
-	bit	0,b			; Was the copyright message shown?
-	ret	nz			; Yes, return
-	call	CHGET
-	cp	'i'
-	jr	z,.showcopyright
-	cp	'I'
-	ret	nz
-.showcopyright:
-	inc	b			; Inhibit further presses of the i key 
-	ld	de,strCopyright
+	ld	de, strCrLf
 	jp	printString
 
 .detecta:
-	ld	(iy+NUMSD), a		; processo de deteccao dos cartoes
+	ld	(iy+WRKAREA.NUMSD), a		; processo de deteccao dos cartoes
 	ld	de, strCartao
 	call	printString
-	ld	a, (iy+NUMSD)
+	ld	a, (iy+WRKAREA.NUMSD)
 	add	'0'
 	call	CHPUT
 	ld	a, ':'
 	call	CHPUT
 	ld	a, ' '
 	call	CHPUT
-	ld	c, (iy+NUMSD)
+	ld	c, (iy+WRKAREA.NUMSD)
 	ld	a, (PORTCFG)		; testar se cartao esta inserido
 	and	c			; C contem 1 se cartao 1, 2 se cartao 2
 	jr	z,.naoVazio
@@ -601,25 +570,26 @@ DEV_RW:
 	call	testaCartao	; verificar se cartao esta OK
 	pop	hl
 	jr	nc,.ok
-	pop	af		; retira AF guardado no inicio
+	pop	af
 	ld	a, ENRDY	; Not ready
 ;	ld	a, EDISK	; General unknown disk error
 	ld	b, 0
 	ret
 .saicomerroidl:
-	pop	af		; retira AF guardado no inicio
-	ld	a, EIDEVL	; informar erro
+	pop	af
+	ld	a, EIDEVL	; error: Invalid device or LUN 
 	ld	b, 0
 	ret
 .ok:
-	ld	(iy+NUMBLOCOS), b	; guarda numero de blocos para ler/gravar
-	push	hl
-	push	de
-	call	calculaCIDoffset	; calculamos em IX a posicao correta do offset CID dependendo do cartao atual
-	pop	de
-	pop	hl
-	pop	af		; retira AF guardado no inicio, para saber se eh leitura ou escrita
-	jr	c,escrita	; se for escrita pulamos
+	ld	(iy+WRKAREA.NUMBLOCKS), b	; save the number of blocks to transfer 
+	exx
+	call	calculaCIDoffset	; ix=CID offset 
+	ld	a,(ix+15)	; verificar se eh SDV1 ou SDV2
+	ld	ixl,a		; ixl=SDcard version
+	pop	af		; a=Device number, f=read/write flag 
+	exx			; hl=Source/dest Address, de=Pointer to sect#
+	ld	ixh, b 		; ixh=Number of blocks to transfer
+	jr	c,escrita	; Skip if it's a write operation 
 leitura:
 	ld	a, (de)		; 1. n. bloco
 	push	af
@@ -642,19 +612,26 @@ leitura:
 	call	modoROM
 	jr	nc,.ok
 	call	marcaErroCartao		; ocorreu erro na leitura, marcar erro
+	ld	a,(iy+WRKAREA.NUMBLOCKS) ; Get the number of requested blocks
+	sub	ixh		; subtract the number of remaining blocks
+	ld	b,a		; b=number of blocks read
 ;	ld	a, ENRDY	; Not ready
 	ld	a, EDISK	; General unknown disk error
-	ld	b, 0		; informar que lemos 0 blocos
-	ret
 .ok:
 	xor	a		; tudo OK, informar ao Nextor
 	ret
 
 escrita:
-	call	testaWP		; testar se cartao esta protegido contra escrita
+	call	modoSPI
+	; Test if the card is write protected
+	ld	c,(iy+WRKAREA.NUMSD)	; cartao atual (1 ou 2)
+	sla	c		; desloca para apontar para bits 2 ou 3 para cartoes 1 ou 2 respectivamente
+	sla	c
+	ld	a,(PORTCFG)	; testar se cartao esta protegido
+	and	c
 	jr	z,.ok
 	ld	a, EWPROT	; disco protegido
-	ld	b, 0
+	ld	b,0		; 0 blocks were written
 	ret
 .ok:
 	ld	a, (de)		; 1. n. bloco
@@ -673,13 +650,14 @@ escrita:
 	ld	d, a
 	pop	af		; HL = ponteiro destino
 	ld	e, a		; BC DE = 32 bits numero do bloco
-	call	modoSPI
 	call	GravarBloco	; chamar rotina de gravacao de dados
 	call	modoROM
 	jr	nc,.ok2
 	call	marcaErroCartao		; ocorreu erro, marcar nas flags
+	ld	a,(iy+WRKAREA.NUMBLOCKS) ; Get the number of requested blocks
+	sub	ixh		; subtract the number of remaining blocks
+	ld	b,a		; b=number of blocks written
 	ld	a,EWRERR	; Write error
-	ld	b,0
 	ret
 .ok2:
 	xor	a			; gravacao sem erros!
@@ -730,23 +708,23 @@ DEV_INFO:
 	pop	hl
 	jr	nc,.ok		; nao houve erro
 .saicomerro:
-	ld	a, 1		; informar erro
+	ld	a,2		; informar erro
 	ret
 
 .ok:
 	djnz	.naoBasic
+
 ; Basic information:
-	ld	a,1		; 1 logical unit somente
-	ld	(hl), a
-	xor	a		; reservado, deve ser 0
+	ld	(hl), 1		; 1 logical unit somente
 	inc	hl
-	ld	(hl), a
+	ld	(hl), 0		; reservado, deve ser 0
 	ret			; retorna com A=0 (OK)
 
 .naoBasic:
 	push	hl
 	call	calculaCIDoffset	; calculamos em IX a posicao correta do offset CID dependendo do cartao atual
 	pop	hl
+
 	djnz	.naoManuf
 ; Manufacturer Name:
 	push	hl		; salva ponteiro do buffer
@@ -796,12 +774,10 @@ DEV_INFO:
 	ret
 
 .naoProduct:
-; Serial:
-	ld	a, '0'		; Coloca prefixo "0x"
-	ld	(hl), a
+; Serial Number:
+	ld	(hl),'0'	; Coloca prefixo "0x"
 	inc	hl
-	ld	a, 'x'
-	ld	(hl), a
+	ld	(hl), 'x'
 	inc	hl
 	push	hl		; guarda HL que aponta para buffer do Nextor
 	push	ix
@@ -859,37 +835,32 @@ DEV_STATUS:
 	jr	nc,.saicomerro
 	dec	b		; 1 logical unit somente
 	jr	nz,.saicomerro
-
 	push	af
 	call	pegaWorkArea	; HL=IY=Work area pointer
 	pop	af
-	ld	(iy+NUMSD),a	; salva numero do device atual (1 ou 2)
+	ld	(iy+WRKAREA.NUMSD),a	; salva numero do device atual (1 ou 2)
 	ld	c,a		; c=device number
 	call	modoSPI
 	ld	a, (PORTCFG)	; testar se cartao esta inserido
 	call	modoROM
 	and	c		; C contem 1 se cartao 1, 2 se cartao 2
-	jr	nz,.cartaoComErro	; se slot do cartao estiver vazio, marcamos o erro nas flags
-	ld	a, (iy+FLAGSCARTAO)	; testar bit de erro do cartao nas flags
-	and	c
-	jr	z,.semMudanca	; cartao nao marcado com erro, pula
+	jr	nz,.cartaoAusente	; se slot do cartao estiver vazio, marcamos o erro nas flags
+	;***FixMe: Disk change detection doesn't work
+	; Will have to check both the hardware disk-change and the software
+	; disk-change reported by LUN_NFO
 	call	modoSPI
 	call	detectaCartao	; erro na deteccao do cartao, tentar re-detectar
 	call	modoROM
 	jr	c,.cartaoComErro	; nao conseguimos detectar, sai com erro
-	ld	a, (iy+NUMSD)		; conseguimos detectar, tira erro nas flags
-	cpl			; inverte bits para fazer o AND
-	ld	c, a
-	ld	a, (iy+FLAGSCARTAO)
-	and	c			; limpa bit
-	ld	(iy+FLAGSCARTAO), a
-.comMudanca:
-	ld	a, 2		; informa ao Nextor que cartao esta OK e mudou
-	ret
+
 .semMudanca:
 	ld	a, 1		; informa ao Nextor que cartao esta OK e nao mudou
 	ret
+.comMudanca:
+	ld	a, 2		; informa ao Nextor que cartao esta OK e mudou
+	ret
 .cartaoComErro:
+.cartaoAusente:
 	call	marcaErroCartao	; marcar erro do cartao nas flags
 .saicomerro:
 	ld	a, 0		; informa erro
@@ -942,16 +913,21 @@ LUN_INFO:
 	ld	a, 1		; informar erro
 	ret
 .ok:
-	push	hl
+	exx	
+	; ***FixMe: Will have to check disk-change, and daisy chain this as a
+	; software flag so DEV_STATUS can also be notified
+	call	modoSPI
+	call	detectaCartao	; erro na deteccao do cartao, tentar re-detectar
+	call	modoROM
+	jr	c,.saicomerro
 	call	calculaBLOCOSoffset	; calcular em IX e HL o offset correto do buffer que armazena total de blocos
-	pop	hl		; do cartao dependendo do cartao atual solicitado
+	exx			; do cartao dependendo do cartao atual solicitado
 	xor	a
-	ld	(hl), a		; Informar que o dispositivo eh do tipo block device
+	ld	(hl),a		; Informar que o dispositivo eh do tipo block device
 	inc	hl
-	ld	(hl), a		; tamanho de um bloco = 512 bytes (coloca $00, $02 que é $200 = 512)
+	ld	(hl),a		; block size: 512 bytes (0200h)
 	inc	hl
-	ld	a, 2
-	ld	(hl), a
+	ld	(hl),2
 	inc	hl
 	ld	a, (ix)		; copia numero de blocos total
 	ld	(hl), a
@@ -962,11 +938,11 @@ LUN_INFO:
 	ld	a, (ix+2)
 	ld	(hl), a
 	inc	hl
-	xor	a		; cartoes SD tem total de blocos em 24 bits, mas o Nextor pede numero de
-	ld	(hl), a 	; 32 bits, entao coloca 0 no MSB
+	ld	(hl),0		; The highest byte must be set to 0, as SDcards
+				; have 24bit total block numbers, and Nextor
+				; requires 32bits. 
 	inc	hl
-	ld	a, 1		; flags: dispositivo R/W removivel
-	ld	(hl), a
+	ld	(hl),1		; flags: dispositivo R/W removivel
 	inc	hl
 	xor	a		; CHS = 0
 	ld	(hl), a
@@ -974,8 +950,7 @@ LUN_INFO:
 	ld	(hl), a
 	inc	hl
 	ld	(hl), a
-	inc	hl
-	xor	a		; informar que dados foram preenchidos
+;	xor	a		; informar que dados foram preenchidos
 	ret
 
 ;=====
@@ -1016,25 +991,24 @@ testaCartao:
 	push	af
 	call	pegaWorkArea	; HL=IY=Work area pointer
 	pop	af
-	ld	(iy+NUMSD), a	; salva numero do device atual (1 ou 2)
+	ld	(iy+WRKAREA.NUMSD), a	; salva numero do device atual (1 ou 2)
 	ld	c, a
 	call	modoSPI
 	ld	a, (PORTCFG)	; testar se cartao esta inserido
 	call	modoROM
 	and	c		; C contem 1 se cartao 1, 2 se cartao 2
 	jr	nz,.saicomerro				
-	ld	a, (iy+FLAGSCARTAO)	; testar bit de erro do cartao nas flags
-	and	c
-	jr	z,.ok
-	scf			; indica erro
-	ret
-.ok:
-	xor	a		; zera carry indicando sem erro
+	ld	a, (iy+WRKAREA.NUMSD)		; conseguimos detectar, tira erro nas flags
+	cpl			; inverte bits para fazer o AND
+	ld	c, a
+	ld	a, (iy+WRKAREA.CARDFLAGS)
+	and	c			; limpa bit
+	ld	(iy+WRKAREA.CARDFLAGS), a
 	ret
 .saicomerro:
-	ld	a, (iy+FLAGSCARTAO)	; marca bit de erro nas flags
+	ld	a, (iy+WRKAREA.CARDFLAGS)	; marca bit de erro nas flags
 	or	c
-	ld	(iy+FLAGSCARTAO), a
+	ld	(iy+WRKAREA.CARDFLAGS), a
 	scf
 	ret
 
@@ -1043,41 +1017,26 @@ testaCartao:
 ; Destroi AF, C
 ;------------------------------------------------
 marcaErroCartao:
-	ld	c, (iy+NUMSD)		; cartao atual (1 ou 2)
-	ld	a, (iy+FLAGSCARTAO)	; marcar erro
+	ld	c, (iy+WRKAREA.NUMSD)		; cartao atual (1 ou 2)
+	ld	a, (iy+WRKAREA.CARDFLAGS)	; marcar erro
 	or	c
-	ld	(iy+FLAGSCARTAO), a
+	ld	(iy+WRKAREA.CARDFLAGS), a
 	ret
 
 ;------------------------------------------------
-; Testar se cartao atual esta protegido contra
-; gravacao, A=0 se protegido
-; Destroi AF, C
-;------------------------------------------------
-testaWP:
-	ld	c, (iy+NUMSD)	; cartao atual (1 ou 2)
-	rlc	c		; desloca para apontar para bits 2 ou 3 para cartoes 1 ou 2 respectivamente
-	rlc	c
-	call	modoSPI
-	ld	a, (PORTCFG)	; testar se cartao esta protegido
-	call	modoROM
-	and	c
-	ret			; se A for 0 cartao esta protegido
-
-;------------------------------------------------
 ; Calcula offset do buffer na RAM em HL e IX para
-; os dados do CID dependendo do cartao atual
+; os dados do CID dependendo do tipo do cartao atual
 ; Destroi AF, DE, HL e IX
 ;------------------------------------------------
 calculaCIDoffset:
 	push	iy		; copiamos IY para HL
 	pop	hl
 	ld	d, 0
-	ld	e, BCID1	; DE aponta para buffer BCID1
-	ld	a, (iy+NUMSD)	; vamos fazer IX apontar para o buffer correto
+	ld	e, WRKAREA.BCID1	; DE aponta para buffer BCID1
+	ld	a, (iy+WRKAREA.NUMSD)	; vamos fazer IX apontar para o buffer correto
 	dec	a		; dependendo do cartao: BCID1 ou BCID2
 	jr	z,.c1
-	ld	e, BCID2	; DE aponta para buffer BCID2
+	ld	e, WRKAREA.BCID2	; DE aponta para buffer BCID2
 .c1:
 	add	hl, de		; HL aponta para buffer correto
 	push	hl		
@@ -1094,11 +1053,11 @@ calculaBLOCOSoffset:
 	push	iy		; copiamos IY para HL
 	pop	hl
 	ld	d, 0
-	ld	e, BLOCOS1	; DE aponta para buffer BLOCOS1
-	ld	a, (iy+NUMSD)	; Vamos fazer IX apontar para o buffer correto
-	dec	a		; dependendo do cartao: BLOCOS1 ou BLOCOS2
+	ld	e, WRKAREA.BLOCKS1	; DE aponta para buffer BLOCKS1
+	ld	a, (iy+WRKAREA.NUMSD)	; Vamos fazer IX apontar para o buffer correto
+	dec	a		; dependendo do cartao: BLOCKS1 ou BLOCKS2
 	jr	z,.c1
-	ld	e, BLOCOS2	; DE aponta para buffer BLOCOS2
+	ld	e, WRKAREA.BLOCKS2	; DE aponta para buffer BLOCKS2
 .c1:
 	add	hl, de		; HL aponta para buffer correto
 	push	hl		
@@ -1150,9 +1109,9 @@ detectaCartao:
 	push	iy		; copiamos IY para HL
 	pop	hl
 	ld	d, 0
-	ld	e, BCSD+5
+	ld	e, WRKAREA.BCSD+5
 	add	hl, de		; HL aponta para buffer BCSD+5
-	ld	a, (iy+BCSD)
+	ld	a, (iy+WRKAREA.BCSD)
 	and	$C0		; testa versao do registro CSD
 	jr	z,.calculaCSD1
 	cp	$40
@@ -1310,23 +1269,13 @@ lerBlocoCxD:
 	ret	c
 	ex	de,hl
 
-	; Check for a Z80 or R800
-;	or 	a		; Clear Cy
-	ld	a,20
-	db	#ED,#F9		; mulub a,a
 	ld	hl, PORTSPI
-	jr	c,.r800		; Use LDIR for R800
-	.16	ldi	; 16 vezes o opcode LDI
-.end:	ld	a, (hl)
+	.16	ldi		; LDI x16
+	ld	a, (hl)
 	ld	a, (hl)		; byte de resposta
 	or	a
 	ex	de,hl
-	jr		desabilitaSDs
-
-.r800:
-	ld	bc,16
-	ldir
-	jr	.end
+	jr	desabilitaSDs
 
 ; ------------------------------------------------
 ; Algoritmo para inicializar um cartao SD
@@ -1442,12 +1391,15 @@ SD_SEND_CMD_2_ARGS_GET_R3:
 ; Enviar comando em A com 4 bytes de parametros
 ; em BC DE e enviar CRC correto se for CMD0 ou 
 ; CMD8 e aguardar processamento do cartao
-; Destroi AF, BC
+; Output  : A=0 if there was no error
+; Modifies:  AF, B, AF'
 ; ------------------------------------------------
 SD_SEND_CMD:
+	ex	af,af'
 	call	setaSDAtual
+	ex	af,af'
 	ld	(PORTSPI), a
-	push	af
+	ex	af,af'
 	ld	a, b
 	ld	(PORTSPI), a
 	ld	a, c
@@ -1456,7 +1408,7 @@ SD_SEND_CMD:
 	ld	(PORTSPI), a
 	ld	a, e
 	ld	(PORTSPI), a
-	pop	af
+	ex	af,af'
 	cp	CMD0
 	ld	b, $95		; CRC para CMD0
 	jr	z,enviaCRC
@@ -1467,7 +1419,23 @@ SD_SEND_CMD:
 enviaCRC:
 	ld	a, b
 	ld	(PORTSPI), a
-	jr	WAIT_RESP_NO_FF
+;	jr	WAIT_RESP_NO_FF
+
+; ------------------------------------------------
+; Esperar que resposta do cartao seja diferente
+; de $FF
+; Destroi AF, BC
+; ------------------------------------------------
+WAIT_RESP_NO_FF:
+	ld	bc, 1		; 256 tentativas
+.loop:
+	ld	a, (PORTSPI)
+	cp	$FF		; testa $FF
+	ret	nz		; sai se nao for $FF
+	djnz	.loop
+	dec	c
+	jr	nz,.loop
+	ret
 
 ; ------------------------------------------------
 ; Esperar que resposta do cartao seja $FE
@@ -1483,22 +1451,6 @@ WAIT_RESP_FE:
 	ret	z		; sim, retornamos com carry=0
 	djnz	.loop
 	scf			; erro, carry=1
-	ret
-
-; ------------------------------------------------
-; Esperar que resposta do cartao seja diferente
-; de $FF
-; Destroi AF, BC
-; ------------------------------------------------
-WAIT_RESP_NO_FF:
-	ld	bc, 1		; 256 tentativas
-.loop:
-	ld	a, (PORTSPI)
-	cp	$FF		; testa $FF
-	ret		nz		; sai se nao for $FF
-	djnz	.loop
-	dec	c
-	jr	nz,.loop
 	ret
 
 ; ------------------------------------------------
@@ -1520,76 +1472,122 @@ WAIT_RESP_NO_00:
 
 ; ------------------------------------------------
 ; Ativa (seleciona) cartao atual baixando seu /CS
-; Nao destroi registradores
+; Modify: AF 
 ; ------------------------------------------------
 setaSDAtual:
-	push	af
 	ld	a, (PORTSPI)	; dummy read
-	ld	a, (iy+NUMSD)
+	ld	a, (iy+WRKAREA.NUMSD)
 	cpl			; inverte bits
 	ld	(PORTCFG), a
-	pop	af
 	ret
-
 
 ; ------------------------------------------------
 ; Grava um bloco de 512 bytes no cartao
 ; HL aponta para o inicio dos dados
 ; BC e DE contem o numero do bloco (BCDE = 32 bits)
-; Destroi AF, BC, DE, HL
+; Modifies:  AF, BC, DE, HL, IXL
 ; ------------------------------------------------
 GravarBloco:
-	ld	a, (ix+15)	; verificar se eh SDV1 ou SDV2
-	or	a
-	call	z,blocoParaByte		; se for SDV1 coverter blocos para bytes
+	dec	ixl		; SDcard V1?
+	call	m,blocoParaByte	; Yes, convert blocks to bytes 
 	call	setaSDAtual	; selecionar cartao atual
-	ld	a, (iy+NUMBLOCOS)	; testar se Nextor quer gravar 1 ou mais blocos
+	ld	a,ixh		; get Number of blocks to write
 	dec	a
 	jp	z,.umBloco	; somente um bloco, gravar usando CMD24
 
 ; multiplos blocos
-	push	bc
-	push	de
+	exx
 	ld	a, CMD55	; Multiplos blocos, mandar ACMD23 com total de blocos
 	call	SD_SEND_CMD_NO_ARGS
 	ld	a, ACMD23
 	ld	bc, 0
 	ld	d, c
-	ld	e, (iy+NUMBLOCOS)	; parametro = total de blocos a gravar
-	call	SD_SEND_CMD_GET_ERROR
-	pop	de
-	pop	bc
-	jp	c,terminaLeituraEscritaBloco	; erro no ACMD23
-	ld	a, CMD25	; comando CMD25 = write multiple blocks
-	call	SD_SEND_CMD_GET_ERROR
-	jp	c,terminaLeituraEscritaBloco	; erro
-.loop:
-	ld	a, $FC		; mandar $FC para indicar que os proximos dados sao
-	ld	(PORTSPI),a	; dados para gravacao
+	ld	e,ixh		; e=Number of blocks to write
+	call	SD_SEND_CMD
+	or	a
+	jr	nz,.erroEscritaBlocoR	; erro no ACMD23
+	exx
+	ld	a, CMD25	; CMD25 = write multiple blocks
+	call	SD_SEND_CMD
+	or	a
+	jr	nz,.erroEscritaBlocoR	; erro
+
 	; Check for a Z80 or R800
 	ex	de,hl
-;	or 	a		; Clear Cy
-	ld	a,20
+;	ld	a,20
+	dec	a		; a=#FF
 	db	#ED,#F9		; mulub a,a
 	ex	de,hl
-	ld	de, PORTSPI
-	jp	c,.r800m	; Use LDIR for R800
-	.512	ldi		; 512 vezes o opcode LDI
-.part2m:
-	ld	a, $FF		; envia dummy CRC
+	jr	nc,.loopZ80	; Use the Z80 optimized loop
+
+	exx
+	call	GTR800LDIR
+	exx			; hl'=Pointer to R800LDIR helper routine
+.loopR800:	; R800 optimized loop
+	ld	de,PORTSPI
+	ld	a, $FC		; mandar $FC para indicar que os proximos dados
+	ld	(de),a		; sao para gravacao
+	call	R800LDIR
+	ld	(PORTSPI),a	; Send a dummy 16bit CRC
 	ld	(PORTSPI),a
+; Wait for !FFh
+	ld	b,5		; 5*5ms = 250ms
+.rwaitnoFFext:
+	in	a,(#E7)
+	ld	c,a
+.rwaitnoFF:
+	ld	a,(PORTSPI)
+	cp	$FF		; a=FF?
+	jr	nz,.rnoFFok
+	in	a,(#E7)
+	sub	c
+	cp	50		; 50mS?
+	jr	c,.rwaitnoFF	; wait 50ms
+	djnz	.rwaitnoFF	; x50ms wait
+	jr	.erroEscritaBlocoR	; error: timeout
+.rnoFFok:
+	and	$1F		; testa bits erro
+	cp	5
+	jr	nz,.erroEscritaBlocoR	; resposta errada, informar erro
+; Wait for !00h
+	ld	b,5		; 5*50ms = 250ms
+.rwaitno00ext:
+	in	a,(#E7)
+	ld	c,a
+.rwaitno00:
+	ld	a,(PORTSPI)
+	or	a
+	jr	nz,.rno00ok
+	in	a,(#E7)
+	sub	c
+	cp	50		; 50ms
+	jr	c,.rwaitno00	; wait 50ms
+	djnz	.rwaitno00ext	; x50 ms wait
+.erroEscritaBlocoR: ; Trick to save some cycles inside the block transfer loop
+	scf
+	jp	terminaLeituraEscritaBloco
+.rno00ok:
+	dec	ixh		; nblocks=nblocks-1
+	jr	nz,.loopR800
+	jp	.loopend
+
+
+.loopZ80:	; Z80 optimized loop
+	ld	de,PORTSPI
+	ld	a, $FC		; mandar $FC para indicar que os proximos dados
+	ld	(de),a		; sao para gravacao
+	.512	ldi		; 512 vezes o opcode LDI
+	ld	(PORTSPI),a	; Send a dummy 16bit CRC
 	ld	(PORTSPI),a
 	call	WAIT_RESP_NO_FF	; esperar cartao
 	and	$1F		; testa bits erro
 	cp	5
-	scf
-	jp	nz,terminaLeituraEscritaBloco	; resposta errada, informar erro
+	jr	nz,.erroEscritaBlocoZ	; resposta errada, informar erro
 	call	WAIT_RESP_NO_00	; esperar cartao
-	jp	c,terminaLeituraEscritaBloco
-	ld	a, (iy+NUMBLOCOS)	; testar se tem mais blocos para gravar
-	dec	a
-	ld	(iy+NUMBLOCOS), a
-	jp	nz,.loop
+	jr	c,.erroEscritaBlocoZ
+	dec	ixh		; nblocks=nblocks-1
+	jp	nz,.loopZ80
+.loopend:
 	ld	a, (PORTSPI)	; acabou os blocos, fazer 2 dummy reads
 	ld	a, (PORTSPI)
 	ld	a, $FD		; enviar $FD para informar ao cartao que acabou os dados
@@ -1599,34 +1597,36 @@ GravarBloco:
 	call	WAIT_RESP_NO_00	; esperar cartao
 	jp	.fim		; CMD25 concluido, sair informando nenhum erro
 
-.r800m:	ld	bc,512
-	ldir
-	jr	.part2m
 
-.r800s:	ld	bc,512
-	ldir
+
+.r800s:
+	exx
+	call	GTR800LDIR
+	exx			; hl'=Pointer to R800LDIR helper routine
+	call	R800LDIR
 	jp	.part2s
 
+.erroEscritaBlocoZ: ; Trick to save some cycles inside the block transfer loop
+	scf
+	jp	terminaLeituraEscritaBloco
+
 .umBloco:
-	ld	a, CMD24	; gravar somente um bloco com comando CMD24 = Write Single Block
+	ld	a, CMD24	; CMD24 = Write Single Block
 	call	SD_SEND_CMD_GET_ERROR
 	jp	c,terminaLeituraEscritaBloco	; erro
+
 
 	ld	a, $FE		; mandar $FE para indicar que vamos mandar dados para gravacao
 	ld	(PORTSPI),a
 
 	; Check for a Z80 or R800
-	ex	de,hl
-;	or 	a		; Clear Cy
-	ld	a,20
+;	ld	a,20
 	db	#ED,#F9		; mulub a,a
-	ex	de,hl
-	ld	de, PORTSPI
+	exx
+	ld	de,PORTSPI
 	jr	c,.r800s	; Use LDIR for R800
 	.512	ldi
 .part2s:
-	ld	bc,512
-	ldir
 	ld	a, $FF		; envia dummy CRC
 	ld	(PORTSPI),a
 	ld	(PORTSPI),a
@@ -1652,57 +1652,89 @@ terminaLeituraEscritaBloco:
 ; Ler um bloco de 512 bytes do cartao
 ; HL aponta para o inicio dos dados
 ; BC e DE contem o numero do bloco (BCDE = 32 bits)
-; Destroi AF, BC, DE, HL
+; Destroi AF, BC, DE, HL, IXL
 ; ------------------------------------------------
 LerBloco:
-	ld	a, (ix+15)	; verificar se eh SDV1 ou SDV2
-	or	a
-	call	z,blocoParaByte	; se for SDV1 coverter blocos para bytes
+	dec	ixl		; SDcard V1?
+	call	m,blocoParaByte	; Yes, convert blocks to bytes 
 	call	setaSDAtual
-
-
-
-	ld	a, (iy+NUMBLOCOS)	; testar se Nextor quer ler um ou mais blocos
+	ld	a,ixh		; get Number of blocks to write
 	dec	a
 	jp	z,.umBloco	; somente um bloco, pular
 
 ; multiplos blocos
-	ld	a, CMD18	; ler multiplos blocos com CMD18 = Read Multiple Blocks
+	ld	a, CMD18	; CMD18 = Read Multiple Blocks
 	call	SD_SEND_CMD_GET_ERROR
-	jp	c,terminaLeituraEscritaBloco
-.loop:
-	call	WAIT_RESP_FE
-	jp	c,terminaLeituraEscritaBloco
-	ex	de,hl
+	jr	c,terminaLeituraEscritaBloco
+
+	ex	de,hl		; de=destination address
 	; Check for a Z80 or R800
-;	or 	a		; Clear Cy
-	ld	a,20
+;	ld	a,20
+	dec	a		; a=FFh
 	db	#ED,#F9		; mulub a,a
-	ld	hl, PORTSPI
-	jp	c,.r800m	; Use LDIR for R800
-	.512	ldi
-.part2m:
-	ex	de,hl
-	ld	a, (PORTSPI)	; descarta CRC
+	jr	nc,.loopZ80	; Use the Z80 optimized loop
+
+	exx
+	call	GTR800LDIR
+	exx			; hl'=Pointer to R800LDIR helper routine
+.loopR800:
+	ld	b,0
+	ld	a,(#E7)
+	ld	c,a
+.rwaitFE:
+	ld	a,(PORTSPI)
+	cp	$FE
+	jr	z,.rFEok
+	djnz	.rwaitFE	; fast card wait
+	ld	a,(#E7)
+	sub	c
+	cp	100		; 100mS?
+	jr	c,.rwaitFE	; slow card wait
+	scf
+	jr	terminaLeituraEscritaBloco
+.rFEok:
+	ld	hl,PORTSPI
+	call	R800LDIR
+	ld	a, (PORTSPI)	; discard 16bit CRC
 	ld	a, (PORTSPI)
-	ld	a, (iy+NUMBLOCOS)	; testar se tem mais blocos para ler
-	dec	a
-	ld	(iy+NUMBLOCOS), a
-	jp	nz,.loop
+	dec	ixh		; nblocks=nblocks-1
+	jr	nz,.loopR800
+	jp	.loopend
+
+.loopZ80:
+	ld	bc,0
+.zwaitFE:
+	ld	a,(PORTSPI)
+	cp	$FE
+	jr	z,.zFEok
+	djnz	.zwaitFE	; fast card wait
+	ex	(sp),hl
+	ex	(sp),hl
+	dec	c
+	jr	nz,.zwaitFE	; slow card wait
+	scf
+	jr	terminaLeituraEscritaBloco
+.zFEok:
+	ld	hl,PORTSPI
+	.512	ldi
+	ld	a, (PORTSPI)	; discard 16bit CRC
+	ld	a, (PORTSPI)
+	dec	ixh		; nblocks=nblocks-1
+	jp	nz,.loopZ80
+.loopend:
 	ld	a, CMD12	; acabou os blocos, mandar CMD12 para cancelar leitura
 	call	SD_SEND_CMD_NO_ARGS
 	jp	.fim
 
-.r800m: ld	bc,512
-	ldir
-	jr	.part2m
-
-.r800s:	ld	bc,512
-	ldir
+.r800s:	
+	exx
+	call	GTR800LDIR
+	exx			; hl'=Pointer to R800LDIR helper routine
+	call	R800LDIR
 	jp	.part2s
 
 .umBloco:
-	ld	a, CMD17	; ler somente um bloco com CMD17 = Read Single Block
+	ld	a, CMD17	; CMD17 = Read Single Block
 	call	SD_SEND_CMD_GET_ERROR
 	jp	c,terminaLeituraEscritaBloco
 
@@ -1711,15 +1743,14 @@ LerBloco:
 	ex	de,hl
 
 	; Check for a Z80 or R800
-;	or 	a		; Clear Cy
-	ld	a,20
+;	ld	a,20
 	db	#ED,#F9		; mulub a,a
-	ld	hl, PORTSPI
+	ld	hl,PORTSPI
 	jr	c,.r800s	; Use LDIR for R800
 	.512	ldi
 .part2s:
-	ex	de,hl
-	ld	a, (PORTSPI)	; descarta CRC
+	ld	a, (PORTSPI)	; discard 16bit CRC
+	ld	a, (PORTSPI)
 .fim:
 	xor	a		; zera carry para informar leitura sem erros
 	jp	terminaLeituraEscritaBloco
@@ -1740,8 +1771,16 @@ blocoParaByte:
 	ret
 
 ; ------------------------------------------------
-; Funcoes utilitarias
+R800LDIR:
+	exx
+	jp	(hl)
+
 ; ------------------------------------------------
+
+
+; ========================================================================== 
+; Funcoes utilitarias
+; ========================================================================== 
 
 ; ------------------------------------------------
 ; Chaveia para modo SPI
@@ -1779,17 +1818,17 @@ printString:
 ; ------------------------------------------------
 ; Converte o byte em A para string em decimal no
 ; buffer apontado por DE
-; Destroi AF, BC, HL, DE
+; Destroi AF, BC, HL, DE, IXL
 ; ------------------------------------------------
 DecToAscii:
 	ld	h, 0
 	ld	l, a		; copiar A para HL
-	ld	(iy+TEMP), 1	; flag para indicar que devemos cortar os zeros a esquerda
+	ld	(iy+WRKAREA.TEMP),1	; flag para indicar que devemos cortar os zeros a esquerda
 	ld	bc, -100	; centenas
 	call	.num1
 	ld	c, -10		; dezenas
 	call	.num1
-	ld	(iy+TEMP), 2	; unidade deve exibir 0 se for zero e nao corta-lo
+	ld	(iy+WRKAREA.TEMP),2	; unidade deve exibir 0 se for zero e nao corta-lo
 	ld	c, -1		; unidades
 .num1:
 	ld	a, '0'-1
@@ -1798,11 +1837,11 @@ DecToAscii:
 	add	hl, bc		; somar com negativo
 	jr	c,.num2		; ainda nao zeramos
 	sbc	hl, bc		; retoma valor original
-	dec	(iy+TEMP)	; se flag do corte do zero indicar para nao cortar, pula
+	dec	(iy+WRKAREA.TEMP)	; se flag do corte do zero indicar para nao cortar, pula
 	jr	nz,.naozero
 	cp	'0'		; devemos cortar os zeros a esquerda. Eh zero?
 	jr	nz,.naozero
-	inc	(iy+TEMP)	; se for zero, nao salvamos e voltamos a flag
+	inc	(iy+WRKAREA.TEMP)	; se for zero, nao salvamos e voltamos a flag
 	ret
 .naozero:
 	ld	(de), a		; eh zero ou eh outro numero, salvar
@@ -1984,6 +2023,94 @@ MYSETSCR:
 	ld	ix,SDFSCR
 	jp	EXTROM
 
+; ------------------------------------------------
+; Check if the STOP key was signaled on DRV_INIT
+; ------------------------------------------------
+INICHKSTOP:
+	ld	a,(INTFLG)
+	cp	4			; Was STOP pressed?
+	ret	nz			; No, quit as fast as possible 
+
+	; Handle STOP to pause and read messages, and ask for the copyright info
+	ld	de,strBootpaused
+	call	printString
+.wait1:	ld	a,7
+	call	SNSMAT
+	and	$10			; Is STOP still pressed?
+	jr	z,.wait1		; Wait for STOP to be released
+	xor	a
+	ld	(INTFLG),a		; Clear STOP flag
+	ld	b,0			; b=inhibit 'i' key flag
+.wait2: call	CHSNS
+	call	nz,.chkikey		; Wait until a key is pressed
+	ld	a,(INTFLG)
+	cp	4			; Was STOP pressed?
+	jr	nz,.wait2		; No, return
+	xor	a
+	ld	(INTFLG),a		; Clear STOP flag
+	call	KILBUF
+	ld	b,30			; Since the user is trying pause the
+.wait3:	halt				; boot messages, this gives him enough
+					; time to react and pause the next
+					; driver
+	ld	a,(INTFLG)
+	cp	4			; Was STOP pressed?
+	ret	z			; quit so the next driver can process it
+	djnz	.wait3			; The user will have the impression
+					; that he has a perfect timing.   ;)
+	ret
+
+.chkikey:
+	bit	0,b			; Was the copyright message shown?
+	ret	nz			; Yes, return
+	call	CHGET
+	cp	'i'
+	jr	z,.showcopyright
+	cp	'I'
+	ret	nz
+.showcopyright:
+	inc	b			; Inhibit further presses of the i key 
+	ld	de,strCopyright
+	jp	printString
+
+
+
+; ------------------------------------------------
+; Install the R800 data transfer helper routine on WorkArea 
+; ------------------------------------------------
+INSTR800HLP:
+	ld	a,(MSXVER)
+	cp	3		; MSX Turbo-R?
+	ret	c		; No, return
+	call	GTR800LDIR
+	ex	de,hl
+	ld	hl,R800DATHLP
+	ld	bc,R800DATHLP.end-R800DATHLP
+	ldir
+	ret
+
+; ------------------------------------------------
+; Obtain the pointer to the R800 data transfer helper routine
+; Input   : IY=Pointer to the WorkArea
+; Output  : HL=pointer to R800 data transfer helper routine 
+; Modifies: DE
+; ------------------------------------------------
+GTR800LDIR:
+	push	iy
+	pop	hl			; hl=WorkArea
+	ld	de,WRKAREA.TRLDIR
+	add	hl,de
+	ret
+
+; ------------------------------------------------
+; R800 data transfer routine, copied to the WorkArea
+; ------------------------------------------------
+R800DATHLP:
+	exx
+	ld	bc,512
+	ldir
+	ret
+.end:
 
 
 ; ==========================================================================
@@ -1996,7 +2123,8 @@ strBootpaused:
 	db	"Paused. Press <i> to show the copyright info.",13,10,0
 
 strCopyright:
-	db	"Copyright (c) 2014 Fabio Belavenuto",13,10
+	db	"(c) 2014 Fabio Belavenuto",13,10
+	db	"(c) 2016 FRS",13,10
 	db	"Licenced under CERN OHL v1.1",13,10
 	db	"http://ohwr.org/cernohl",13,10
 	db	"PCB designed by Luciano Sturaro",13,10
