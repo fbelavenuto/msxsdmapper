@@ -2125,7 +2125,7 @@ strBootpaused:
 strCopyright:
 	db	"(c) 2014 Fabio Belavenuto",13,10
 	db	"(c) 2016 FRS",13,10
-	db	"Licenced under CERN OHL v1.1",13,10
+	db	"Licensed under CERN OHL v1.1",13,10
 	db	"http://ohwr.org/cernohl",13,10
 	db	"PCB designed by Luciano Sturaro",13,10
 	; fall throw
