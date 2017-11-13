@@ -407,9 +407,9 @@
 0034   0100             
 0035   0100             init: 
 0036   0100             	; Actual parameters saved
-0037   0100 ED 73 F0 09 	ld		(savesp), sp				; Stack Pointer saved
+0037   0100 ED 73 07 0A 	ld		(savesp), sp				; Stack Pointer saved
 0038   0104 3A A9 FC    	ld		a, (CSRSW)					; Cursor Saved
-0039   0107 32 F3 09    	ld		(savecursor), a
+0039   0107 32 0A 0A    	ld		(savecursor), a
 0040   010A CD F1 04    	call	cursorOff         			; Turn cursor off (no matter about its state)
 0041   010D             
 0042   010D 11 85 06    	ld		de, strTitulo
@@ -419,13 +419,13 @@
 0046   0116 CD D9 01    	call	checkSystem					; MSX Type checked
 0047   0119 CD 06 02    	call	checkParams					; Check and Save parameters
 0048   011C             
-0049   011C 3A F6 09    	ld		a, (options)
+0049   011C 3A 0D 0A    	ld		a, (options)
 0050   011F CB 4F       	bit		1, a						; only list chips?
 0051   0121 C2 F9 05    	jp		nz, showList				; yes, jump
 0052   0124             
 0053   0124 CD 3B 01    	call	checkFlash     				; Search FLASH ROM
 0054   0127             
-0055   0127 3A F6 09    	ld		a, (options)
+0055   0127 3A 0D 0A    	ld		a, (options)
 0056   012A CB 47       	bit		0, a						; only erasing flash?
 0057   012C C2 A1 04    	jp		nz, eraseFlash				; yes, jump to erase it
 0058   012F             
@@ -446,7 +446,7 @@
 0073   013B 11 9B 07    	ld		de, strProcuraFlash
 0074   013E CD 3E 05    	call	print						; Prints searching message
 0075   0141 3E FF       	ld		a, $FF
-0076   0143 32 F9 09    	ld		(thisslt), a				; Inits SIGSLOT Routine
+0076   0143 32 10 0A    	ld		(thisslt), a				; Inits SIGSLOT Routine
 0077   0146             .loop: 
 0078   0146 F3          	di
 0079   0147 CD CA 03    	call	sigslot						; Calls the next slot (first one if first time)
@@ -457,8 +457,8 @@
 0084   0153 CD A0 01    	call	checkDeviceID				; Searching flash by executing its ID_CHECK command
 0085   0156 38 EE       	jr		c, .loop					; Not found in this slot, continue with next one
 0086   0158             
-0087   0158 3A F9 09    	ld		a, (thisslt)				; FLASH WAS FOUND
-0088   015B 32 FA 09    	ld		(flashslt), a				; Slot saved
+0087   0158 3A 10 0A    	ld		a, (thisslt)				; FLASH WAS FOUND
+0088   015B 32 11 0A    	ld		(flashslt), a				; Slot saved
 0089   015E F5          	push	af 							; For printing the message of slot / subslot
 0090   015F E6 03       	and		3
 0091   0161 C6 30       	add		a, '0'      				; ASCII conversion of the Slot
@@ -476,9 +476,9 @@
 0103   0178             
 0104   0178 11 DD 07    	ld		de, strAchado
 0105   017B CD 3E 05    	call	print						; Printing message with info about slot / subslot
-0106   017E ED 5B FE 09 	ld		de, (flashManPoint)			; recuperamos string do fabricante
+0106   017E ED 5B 15 0A 	ld		de, (flashManPoint)			; recuperamos string do fabricante
 0107   0182 CD 3E 05    	call	print
-0108   0185 ED 5B 00 0A 	ld		de, (flashProdPoint)		; recuperamos string do produto
+0108   0185 ED 5B 17 0A 	ld		de, (flashProdPoint)		; recuperamos string do produto
 0109   0189 CD 3E 05    	call	print						; e imprimimos
 0110   018C 11 C5 06    	ld		de, strCrLf
 0111   018F C3 3E 05    	jp		print
@@ -503,11 +503,11 @@
 0130   01A6 3E 90       	ld		a, $90						; Comando $90 (Software ID Entry)
 0131   01A8 CD 2B 04    	call	flashSendCommand2
 0132   01AB 3A 00 80    	ld		a, ($8000)					; Ler Manufacturer ID
-0133   01AE 32 FB 09    	ld		(flashIdMan), a				; e salvar
+0133   01AE 32 12 0A    	ld		(flashIdMan), a				; e salvar
 0134   01B1 3A 01 80    	ld		a, ($8001)					; Ler Product ID
-0135   01B4 32 FC 09    	ld		(flashIdProd), a			; e salvar
+0135   01B4 32 13 0A    	ld		(flashIdProd), a			; e salvar
 0136   01B7 CD 43 06    	call	flashIdent					; chamamos funcao que identifica flash
-0137   01BA 3A FD 09    	ld		a, (flashAlg)
+0137   01BA 3A 14 0A    	ld		a, (flashAlg)
 0138   01BD FE 00       	cp		0
 0139   01BF 37          	scf									; Carry = 1 - erro
 0140   01C0 28 01       	jr		z, .sair					; se A for zero nao identificamos
@@ -531,7 +531,7 @@
 0158   01CF 0E 6F       	ld		c, _DOSVER
 0159   01D1 CD 02 05    	call	callBdos					; Send DOSVER command to dos
 0160   01D4 78          	ld		a, b
-0161   01D5 32 F4 09    	ld		(dos), a					; Save dos version
+0161   01D5 32 0B 0A    	ld		(dos), a					; Save dos version
 0162   01D8 C9          	ret
 0163   01D9             
 0164   01D9             ; ----------------
@@ -542,14 +542,14 @@
 0169   01D9 3A C1 FC    	ld		a, (EXPTBL)
 0170   01DC 21 2D 00    	ld		hl, BASVER
 0171   01DF CD 0C 00    	call	RDSLT						; Check byte $2D (MSX version)
-0172   01E2 32 F5 09    	ld		(system), a
+0172   01E2 32 0C 0A    	ld		(system), a
 0173   01E5 FE 03       	cp		3							; Turbo R?
 0174   01E7 D8          	ret	c								; no, return
 0175   01E8 FD 2A C0 FC 	ld		iy, (EXPTBL - 1)			; is MSX Turbo R
 0176   01EC DD 21 83 01 	ld		ix, $183
 0177   01F0 CD 1C 00    	call	CALSTL
 0178   01F3 F6 80       	or		$80
-0179   01F5 32 F2 09    	ld		(savecpu), a				; save actual CPU mode
+0179   01F5 32 09 0A    	ld		(savecpu), a				; save actual CPU mode
 0180   01F8 3E 80       	ld		a, $80						; and set Z80 for compatibility
 0181   01FA             
 0182   01FA             systemSetCPU: 
@@ -572,11 +572,11 @@
 0199   0211 CD 6B 02    	call	checkOptions				; Check parameter options
 0200   0214 CD 39 02    	call	checkFileName				; Check file name
 0201   0217             
-0202   0217 3A F4 09    	ld		a, (dos)
+0202   0217 3A 0B 0A    	ld		a, (dos)
 0203   021A FE 02       	cp		2
 0204   021C D2 87 03    	jp		nc, fillName				; If DOS2 then fill only the name
-0205   021F 21 09 0A    	ld		hl, fileNameDOS2			; DOS1. Extract filename
-0206   0222 11 49 0A    	ld		de, fileNameDOS1
+0205   021F 21 20 0A    	ld		hl, fileNameDOS2			; DOS1. Extract filename
+0206   0222 11 60 0A    	ld		de, fileNameDOS1
 0207   0225             .loop0: 
 0208   0225 7E          	ld		a,(hl)
 0209   0226 FE 2E       	cp		'.'
@@ -588,7 +588,7 @@
 0215   022D 10 F6       	djnz	.loop0
 0216   022F C3 87 03    	jp		fillName
 0217   0232             .loop2: 
-0218   0232 11 51 0A    	ld		de, filenDOS1Ext
+0218   0232 11 68 0A    	ld		de, filenDOS1Ext
 0219   0235 06 04       	ld		b, 4
 0220   0237 18 F3       	jr		.loop1
 0221   0239             
@@ -606,7 +606,7 @@
 0233   0241 05          	dec		b
 0234   0242             .p1: 
 0235   0242 21 82 00    	ld		hl, CMD_LINE
-0236   0245 11 09 0A    	ld		de, fileNameDOS2
+0236   0245 11 20 0A    	ld		de, fileNameDOS2
 0237   0248 0E 00       	ld		c, 0
 0238   024A             .loop0: 
 0239   024A 7E          	ld		a, (hl)
@@ -644,7 +644,7 @@
 0271   026B             checkOptions: 
 0272   026B C5          	push	bc
 0273   026C AF          	xor		a
-0274   026D 32 F6 09    	ld		(options), a
+0274   026D 32 0D 0A    	ld		(options), a
 0275   0270 3A 80 00    	ld		a, (CMD_LENGTH)
 0276   0273 47          	ld		b, a
 0277   0274 21 82 00    	ld		hl, CMD_LINE
@@ -675,9 +675,9 @@
 0302   029C 28 01       	jr		z, .achado
 0303   029E C9          	ret
 0304   029F             .achado: 
-0305   029F 3A F6 09    	ld		a, (options)
+0305   029F 3A 0D 0A    	ld		a, (options)
 0306   02A2 B1          	or		c
-0307   02A3 32 F6 09    	ld		(options), a
+0307   02A3 32 0D 0A    	ld		(options), a
 0308   02A6 C9          	ret
 0309   02A7             
 0310   02A7             ; ---------------------
@@ -687,18 +687,18 @@
 0314   02A7             checkFile: 
 0315   02A7 11 62 08    	ld		de, strAbrirArq
 0316   02AA CD 3E 05    	call	print						; Open text
-0317   02AD 3A F4 09    	ld		a, (dos)
+0317   02AD 3A 0B 0A    	ld		a, (dos)
 0318   02B0 FE 02       	cp		2
 0319   02B2 D2 C4 02    	jp		nc, .dos2					; DOS2 mode
 0320   02B5             
 0321   02B5 CD 43 05    	call	makeFCB						; DOS1. Make FCB and Open command.
-0322   02B8 21 49 0A    	ld		hl, fileNameDOS1
+0322   02B8 21 60 0A    	ld		hl, fileNameDOS1
 0323   02BB CD 51 05    	call	buildFCB
 0324   02BE CD 5A 05    	call	open						; Open. If file doesn't exist then error and exit.
 0325   02C1 C3 FB 02    	jp		.p1
 0326   02C4             
 0327   02C4             .dos2: 									; DOS2 Open
-0328   02C4 11 09 0A    	ld		de, fileNameDOS2
+0328   02C4 11 20 0A    	ld		de, fileNameDOS2
 0329   02C7 AF          	xor		a
 0330   02C8 06 00       	ld		b, 0
 0331   02CA 0E 43       	ld		c, _OPEN					; Open file DOS2
@@ -706,15 +706,15 @@
 0333   02CF 11 1A 08    	ld		de, strErroAbrirArq
 0334   02D2 C2 0A 05    	jp		nz, printErro				; if Z = 0 then file not found. Error and Exit
 0335   02D5 78          	ld		a, b
-0336   02D6 32 08 0A    	ld		(fileHandle), a				; Save FILE HANDLE
+0336   02D6 32 1F 0A    	ld		(fileHandle), a				; Save FILE HANDLE
 0337   02D9 C5          	push	bc							; For check size in DOS 2, use SEEK Command.
 0338   02DA 3E 02       	ld		a, SEEK_END
 0339   02DC 11 00 00    	ld		de, 0
 0340   02DF 21 00 00    	ld		hl, 0
 0341   02E2 0E 4A       	ld		c, _SEEK					; Seek
 0342   02E4 CD 02 05    	call	callBdos
-0343   02E7 22 68 0A    	ld		(sizefile), hl
-0344   02EA ED 53 6A 0A 	ld		(sizefile+2), de
+0343   02E7 22 7F 0A    	ld		(sizefile), hl
+0344   02EA ED 53 81 0A 	ld		(sizefile+2), de
 0345   02EE C1          	pop		bc
 0346   02EF AF          	xor		a							; And Now Return Seek to POS 0 (SEEK_SET)
 0347   02F0 11 00 00    	ld		de, 0
@@ -723,13 +723,13 @@
 0350   02F8 CD 02 05    	call	callBdos
 0351   02FB             .p1: 
 0352   02FB 11 3F 08    	ld		de, strTamanhoErrado		; Test filesize. 128K = 00 00 02
-0353   02FE 3A 68 0A    	ld		a, (sizefile)
+0353   02FE 3A 7F 0A    	ld		a, (sizefile)
 0354   0301 B7          	or		a
 0355   0302 C2 0A 05    	jp		nz, printErro
-0356   0305 3A 69 0A    	ld		a, (sizefile+1)
+0356   0305 3A 80 0A    	ld		a, (sizefile+1)
 0357   0308 B7          	or		a
 0358   0309 C2 0A 05    	jp		nz, printErro
-0359   030C 3A 6A 0A    	ld		a, (sizefile+2)
+0359   030C 3A 81 0A    	ld		a, (sizefile+2)
 0360   030F FE 02       	cp		2
 0361   0311 C2 0A 05    	jp		nz, printErro
 0362   0314 C9          	ret
@@ -759,9 +759,9 @@
 0386   0330 11 94 08    	ld		de, strPonto
 0387   0333 CD 3E 05    	call	print						; show '*' for 16 K page loaded
 0388   0336 C1          	pop		bc
-0389   0337 3A F8 09    	ld		a, (actualpage)
+0389   0337 3A 0F 0A    	ld		a, (actualpage)
 0390   033A 3C          	inc		a
-0391   033B 32 F8 09    	ld		(actualpage), a				; and inc page to next loop
+0391   033B 32 0F 0A    	ld		(actualpage), a				; and inc page to next loop
 0392   033E 10 DD       	djnz	.loop						; next loop
 0393   0340             
 0394   0340 CD A4 05    	call	closeFile					; end for load. close File.
@@ -787,7 +787,7 @@
 0414   0357 FB          	ei
 0415   0358 11 00 80    	ld		de, $8000					; buffer = $8000
 0416   035B 21 00 40    	ld		hl, $4000					; length = $4000 (16K)
-0417   035E 3A F4 09    	ld		a, (dos)
+0417   035E 3A 0B 0A    	ld		a, (dos)
 0418   0361 FE 02       	cp		2
 0419   0363 30 0B       	jr		nc, .dos2					; if DOS 2 make <> load
 0420   0365 E5          	push	hl							; DOS 1 LOAD.
@@ -796,7 +796,7 @@
 0423   036A CD BC 05    	call	readMax						; and read 16 KB or max if file < 16K or file size
 0424   036D C3 9C 05    	jp		readFile					; is not mult. of 16. And READ.
 0425   0370             .dos2: 									; DOS 2 LOAD
-0426   0370 3A 08 0A    	ld		a, (fileHandle)
+0426   0370 3A 1F 0A    	ld		a, (fileHandle)
 0427   0373 47          	ld		b, a
 0428   0374 0E 48       	ld		c, _READ					; DOS 2 COMMAND Read
 0429   0376 C3 FA 04    	jp		callBdosCE
@@ -819,7 +819,7 @@
 0446   0387             ; extract fileName
 0447   0387             ; -----------------
 0448   0387             fillName: 
-0449   0387 21 48 0A    	ld		hl, fileNameDOS2 + 63
+0449   0387 21 5F 0A    	ld		hl, fileNameDOS2 + 63
 0450   038A 06 40       	ld		b, 64						; max params. End to init loop
 0451   038C             .loop: 
 0452   038C 7E          	ld		a,(hl)
@@ -855,7 +855,7 @@
 0482   03AA 3A 42 F3    	ld		a, (RAMAD1)
 0483   03AD 26 40       	ld		h, $40
 0484   03AF CD 24 00    	call	ENASLT						; set mem to page 1
-0485   03B2 3A 02 0A    	ld		a, (erasedelay)				; loop times from delay.
+0485   03B2 3A 19 0A    	ld		a, (erasedelay)				; loop times from delay.
 0486   03B5 47          	ld		b, a
 0487   03B6             .loop: 
 0488   03B6 C5          	push	bc
@@ -864,7 +864,7 @@
 0491   03B9 F3          	di
 0492   03BA C1          	pop		bc
 0493   03BB 10 F9       	djnz	.loop
-0494   03BD 3A FA 09    	ld		a, (flashslt)
+0494   03BD 3A 11 0A    	ld		a, (flashslt)
 0495   03C0 26 40       	ld		h, $40
 0496   03C2 CD 24 00    	call	ENASLT						; return flash to page 1 (DOS1 Compatibility)
 0497   03C5 FB          	ei
@@ -881,15 +881,15 @@
 0508   03CA             ; this code is programmed by Nestor Soriano aka Konamiman
 0509   03CA             ; --------------------------------------------------------
 0510   03CA             sigslot: 
-0511   03CA 3A F9 09    	ld		a, (thisslt)				; Returns the next slot, starting by
+0511   03CA 3A 10 0A    	ld		a, (thisslt)				; Returns the next slot, starting by
 0512   03CD FE FF       	cp		$FF							; slot 0. Returns #FF when there are not more slots
 0513   03CF 20 09       	jr		nz, .p1						; Modifies AF, BC, HL.
 0514   03D1 3A C1 FC    	ld		a, (EXPTBL)
 0515   03D4 E6 80       	and		%10000000
-0516   03D6 32 F9 09    	ld		(thisslt), a
+0516   03D6 32 10 0A    	ld		(thisslt), a
 0517   03D9 C9          	ret
 0518   03DA             .p1: 
-0519   03DA 3A F9 09    	ld		a, (thisslt)
+0519   03DA 3A 10 0A    	ld		a, (thisslt)
 0520   03DD FE 8F       	cp		%10001111
 0521   03DF 28 28       	jr		z, .nomaslt
 0522   03E1 FE 03       	cp		%00000011
@@ -906,7 +906,7 @@
 0533   03F3 7E          	ld		a, (hl)
 0534   03F4 E6 80       	and		%10000000
 0535   03F6 B1          	or		c
-0536   03F7 32 F9 09    	ld		(thisslt), a
+0536   03F7 32 10 0A    	ld		(thisslt), a
 0537   03FA C9          	ret
 0538   03FB             .sltexp: 
 0539   03FB 4F          	ld		c, a
@@ -915,7 +915,7 @@
 0542   0400 79          	ld		a, c
 0543   0401 28 E6       	jr		z, .p2
 0544   0403 C6 04       	add		a, %00000100
-0545   0405 32 F9 09    	ld		(thisslt), a
+0545   0405 32 10 0A    	ld		(thisslt), a
 0546   0408 C9          	ret
 0547   0409             .nomaslt: 
 0548   0409 3E FF       	ld		a, $FF
@@ -986,7 +986,7 @@
 0613   044D 26 80       	ld		h, $80
 0614   044F CD 24 00    	call	ENASLT						; mem to page 2 (DOS1)
 0615   0452             
-0616   0452 3A FA 09    	ld		a, (flashslt)
+0616   0452 3A 11 0A    	ld		a, (flashslt)
 0617   0455 26 40       	ld		h, $40
 0618   0457 CD 24 00    	call	ENASLT						; flash to page 1
 0619   045A             
@@ -998,7 +998,7 @@
 0625   0463             .loop: 
 0626   0463 3E A0       	ld		a, $A0						; Modo de gravacao de dados
 0627   0465 CD 0C 04    	call	flashSendCommand1
-0628   0468 3A F8 09    	ld		a, (actualpage)
+0628   0468 3A 0F 0A    	ld		a, (actualpage)
 0629   046B F6 80       	or		$80
 0630   046D D3 5F       	out		(IOFW), a					; select 16K page in Flash
 0631   046F CD 8A 04    	call	.gravaByte					; program byte
@@ -1053,7 +1053,7 @@
 0680   04A1             eraseFlash: 
 0681   04A1 11 83 08    	ld		de, strApagarFlash
 0682   04A4 CD 3E 05    	call	print						; Erase Text Show.
-0683   04A7 3A FA 09    	ld		a, (flashslt)
+0683   04A7 3A 11 0A    	ld		a, (flashslt)
 0684   04AA 26 40       	ld		h, $40
 0685   04AC CD 24 00    	call	ENASLT						; set flash in page 1
 0686   04AF F3          	di
@@ -1065,12 +1065,12 @@
 0692   04B7 CD 0C 04    	call	flashSendCommand1
 0693   04BA 21 00 40    	ld		hl, $4000
 0694   04BD 7E          	ld		a, (hl)
-0695   04BE 32 03 0A    	ld		(togglebit), a
+0695   04BE 32 1A 0A    	ld		(togglebit), a
 0696   04C1             .loop: 									; testa fim do erase por Toggle Bit
-0697   04C1 3A 03 0A    	ld		a, (togglebit)
+0697   04C1 3A 1A 0A    	ld		a, (togglebit)
 0698   04C4 BE          	cp		(hl)
 0699   04C5 7E          	ld		a, (hl)
-0700   04C6 32 03 0A    	ld		(togglebit), a
+0700   04C6 32 1A 0A    	ld		(togglebit), a
 0701   04C9 20 F6       	jr		nz, .loop
 0702   04CB             ;	xor		a
 0703   04CB             ;	out		(IOFW), a					; Desliga modo gravacao da Flash
@@ -1087,7 +1087,7 @@
 0714   04D9 CD 24 00    	call	ENASLT						; set mem to page 1
 0715   04DC 11 FE 07    	ld		de, strOk
 0716   04DF CD 3E 05    	call	print
-0717   04E2 3A F6 09    	ld		a, (options)
+0717   04E2 3A 0D 0A    	ld		a, (options)
 0718   04E5 CB 47       	bit		0, a						; check if /e command.
 0719   04E7 C8          	ret	z								; No. Return to Main program
 0720   04E8 C3 0F 05    	jp		exitok						; Yes. Exit.
@@ -1167,10 +1167,10 @@
 0794   051A 3A 43 F3    	ld		a, (RAMAD2)
 0795   051D 26 80       	ld		h, $80
 0796   051F CD 24 00    	call	ENASLT						; set mem to page 2
-0797   0522 3A F5 09    	ld		a, (system)
+0797   0522 3A 0C 0A    	ld		a, (system)
 0798   0525 FE 03       	cp		3							; Turbo R?
 0799   0527 38 06       	jr		c, exit						; No. Go To Exit
-0800   0529 3A F2 09    	ld		a, (savecpu)				; Yes. Restore CPU Mode
+0800   0529 3A 09 0A    	ld		a, (savecpu)				; Yes. Restore CPU Mode
 0801   052C CD FA 01    	call	systemSetCPU
 0802   052F             
 0803   052F             ; ---------------
@@ -1178,9 +1178,9 @@
 0805   052F             ; program exit
 0806   052F             ; ---------------
 0807   052F             exit: 
-0808   052F 3A F3 09    	ld		a,(savecursor)				; Restore Cursor Value
+0808   052F 3A 0A 0A    	ld		a,(savecursor)				; Restore Cursor Value
 0809   0532 CD ED 04    	call	cursorSet
-0810   0535 ED 7B F0 09 	ld		sp, (savesp)				; And Restore SP
+0810   0535 ED 7B 07 0A 	ld		sp, (savesp)				; And Restore SP
 0811   0539 0E 00       	ld		c, _TERM0					; Program Terminate BDOS Command.
 0812   053B C3 02 05    	jp		callBdos					; Go and Exit. WOW!
 0813   053E             
@@ -1199,8 +1199,8 @@
 0826   0543             ; Prepare NEW FCB
 0827   0543             ; ---------------
 0828   0543             makeFCB: 
-0829   0543 21 58 0A    	ld		hl, FCB
-0830   0546 11 59 0A    	ld		de, FCB+1
+0829   0543 21 6F 0A    	ld		hl, FCB
+0830   0546 11 70 0A    	ld		de, FCB+1
 0831   0549 36 00       	ld		(hl), 0
 0832   054B 01 25 00    	ld		bc, 37
 0833   054E ED B0       	ldir
@@ -1211,7 +1211,7 @@
 0838   0551             ; HL = Pointer to namefile string
 0839   0551             ; ----------------
 0840   0551             buildFCB: 
-0841   0551 11 59 0A    	ld		de, fileName
+0841   0551 11 70 0A    	ld		de, fileName
 0842   0554 01 0B 00    	ld		bc, 11
 0843   0557 ED B0       	ldir
 0844   0559 C9          	ret
@@ -1220,12 +1220,12 @@
 0847   055A             ; OPEN FCB FILE
 0848   055A             ; ---------------
 0849   055A             open: 
-0850   055A 11 58 0A    	ld		de, FCB
+0850   055A 11 6F 0A    	ld		de, FCB
 0851   055D 0E 0F       	ld		c, _FOPEN
 0852   055F CD 02 05    	call	callBdos
 0853   0562 11 1A 08    	ld		de, strErroAbrirArq
 0854   0565 C2 0A 05    	jp		nz, printErro
-0855   0568 DD 21 58 0A 	ld		ix, FCB
+0855   0568 DD 21 6F 0A 	ld		ix, FCB
 0856   056C 3E 01       	ld		a, 1
 0857   056E DD 77 0E    	ld		(ix+14), a
 0858   0571 AF          	xor		a
@@ -1241,7 +1241,7 @@
 0868   0586             ; DEHL = Pointer
 0869   0586             ; --------------
 0870   0586             seek: 
-0871   0586 DD 21 58 0A 	ld		ix, FCB
+0871   0586 DD 21 6F 0A 	ld		ix, FCB
 0872   058A DD 75 21    	ld		(ix+33), l
 0873   058D DD 74 22    	ld		(ix+34), h
 0874   0590 DD 73 23    	ld		(ix+35), e
@@ -1261,7 +1261,7 @@
 0888   059C             ; HL Bytes to read from opened FCB, with the pointer ready
 0889   059C             ; -------------------------------------------------------
 0890   059C             readFile: 
-0891   059C 11 58 0A    	ld		de, FCB
+0891   059C 11 6F 0A    	ld		de, FCB
 0892   059F 0E 27       	ld		c, _RDBLK
 0893   05A1 C3 FA 04    	jp		callBdosCE
 0894   05A4             
@@ -1271,14 +1271,14 @@
 0898   05A4             ; close File. Check DOS variable for DOS2 and DOS1 close
 0899   05A4             ; ----------------
 0900   05A4             closeFile: 
-0901   05A4 3A F4 09    	ld		a, (dos)
+0901   05A4 3A 0B 0A    	ld		a, (dos)
 0902   05A7 FE 02       	cp		2
 0903   05A9 30 08       	jr		nc, .dos2
-0904   05AB 11 58 0A    	ld		de, FCB
+0904   05AB 11 6F 0A    	ld		de, FCB
 0905   05AE 0E 10       	ld		c, _FCLOSE
 0906   05B0 C3 02 05    	jp		callBdos
 0907   05B3             .dos2: 
-0908   05B3 3A 08 0A    	ld		a, (fileHandle)
+0908   05B3 3A 1F 0A    	ld		a, (fileHandle)
 0909   05B6 47          	ld		b, a
 0910   05B7 0E 45       	ld		c, _CLOSE
 0911   05B9 C3 02 05    	jp		callBdos
@@ -1298,17 +1298,17 @@
 0925   05BD D5          	push	de
 0926   05BE E5          	push	hl
 0927   05BF AF          	xor		a
-0928   05C0 2A 6A 0A    	ld		hl, (sizefile+2)
-0929   05C3 ED 5B 7B 0A 	ld		de, (sizeread+2)
+0928   05C0 2A 81 0A    	ld		hl, (sizefile+2)
+0929   05C3 ED 5B 92 0A 	ld		de, (sizeread+2)
 0930   05C7 ED 52       	sbc		hl, de
-0931   05C9 22 06 0A    	ld		(sizefiletmp+2), hl
-0932   05CC 2A 68 0A    	ld		hl, (sizefile)
-0933   05CF ED 5B 79 0A 	ld		de, (sizeread)
+0931   05C9 22 1D 0A    	ld		(sizefiletmp+2), hl
+0932   05CC 2A 7F 0A    	ld		hl, (sizefile)
+0933   05CF ED 5B 90 0A 	ld		de, (sizeread)
 0934   05D3 ED 52       	sbc		hl, de
-0935   05D5 22 04 0A    	ld		(sizefiletmp), hl
+0935   05D5 22 1B 0A    	ld		(sizefiletmp), hl
 0936   05D8 E1          	pop		hl
 0937   05D9 E5          	push	hl
-0938   05DA ED 5B 04 0A 	ld		de, (sizefiletmp)
+0938   05DA ED 5B 1B 0A 	ld		de, (sizefiletmp)
 0939   05DE CD F4 04    	call	cmpHLcomDE
 0940   05E1 30 04       	jr		nc, .readmax0
 0941   05E3 E1          	pop		hl
@@ -1317,13 +1317,13 @@
 0944   05E5 F1          	pop		af
 0945   05E6 C9          	ret
 0946   05E7             .readmax0: 
-0947   05E7 ED 5B 06 0A 	ld		de, (sizefiletmp+2)
+0947   05E7 ED 5B 1D 0A 	ld		de, (sizefiletmp+2)
 0948   05EB 21 00 00    	ld		hl, 0
 0949   05EE CD F4 04    	call	cmpHLcomDE
 0950   05F1 E1          	pop		hl
 0951   05F2 20 F0       	jr		nz, .readmaxend
 0952   05F4             .readmax1: 
-0953   05F4 2A 04 0A    	ld		hl, (sizefiletmp)
+0953   05F4 2A 1B 0A    	ld		hl, (sizefiletmp)
 0954   05F7 18 EB       	jr		.readmaxend
 0955   05F9             
 0956   05F9             ; ----------------------
@@ -1339,26 +1339,26 @@
 0966   0602 7E          	ld		a, (hl)
 0967   0603 FE 00       	cp		0							; acabou a tabela?
 0968   0605 CA 2F 05    	jp		z, exit
-0969   0608 32 FB 09    	ld		(flashIdMan), a				; salva ID do fabricante
+0969   0608 32 12 0A    	ld		(flashIdMan), a				; salva ID do fabricante
 0970   060B 23          	inc		hl
 0971   060C 7E          	ld		a, (hl)						; pega ID do produto
-0972   060D 32 FC 09    	ld		(flashIdProd), a			; e salva
+0972   060D 32 13 0A    	ld		(flashIdProd), a			; e salva
 0973   0610 23          	inc		hl
 0974   0611 5E 23 56 2B 	ld		de, (hl)					; vamos pegar a string do fabricante
-0975   0615 ED 53 FE 09 	ld		(flashManPoint), de			; e salvar
+0975   0615 ED 53 15 0A 	ld		(flashManPoint), de			; e salvar
 0976   0619 23          	inc		hl
 0977   061A 23          	inc		hl
 0978   061B 5E 23 56 2B 	ld		de, (hl)					; vamos pegar a string do produto
-0979   061F ED 53 00 0A 	ld		(flashProdPoint), de		; e salvar
+0979   061F ED 53 17 0A 	ld		(flashProdPoint), de		; e salvar
 0980   0623 23          	inc		hl
 0981   0624 23          	inc		hl
 0982   0625 7E          	ld		a, (hl)						; vamos pegar o algoritmo
-0983   0626 32 FD 09    	ld		(flashAlg), a				; e salvar
+0983   0626 32 14 0A    	ld		(flashAlg), a				; e salvar
 0984   0629 23          	inc		hl
 0985   062A E5          	push	hl
-0986   062B ED 5B FE 09 	ld		de, (flashManPoint)
+0986   062B ED 5B 15 0A 	ld		de, (flashManPoint)
 0987   062F CD 3E 05    	call	print
-0988   0632 ED 5B 00 0A 	ld		de, (flashProdPoint)
+0988   0632 ED 5B 17 0A 	ld		de, (flashProdPoint)
 0989   0636 CD 3E 05    	call	print
 0990   0639 11 C5 06    	ld		de, strCrLf
 0991   063C CD 3E 05    	call	print
@@ -1375,7 +1375,7 @@
 1002   0644 C5          	push	bc
 1003   0645 D5          	push	de
 1004   0646 21 2E 09    	ld		hl, tblFlash				; HL aponta para inicio da tabela
-1005   0649 3A FB 09    	ld		a, (flashIdMan)
+1005   0649 3A 12 0A    	ld		a, (flashIdMan)
 1006   064C 47          	ld		b, a						; B contem ID do fabricante
 1007   064D 16 00       	ld		d, 0						; DE eh usado para incrementar HL para proxima entrada da tabela
 1008   064F             .loop: 
@@ -1389,7 +1389,7 @@
 1016   065A 18 F3       	jr		.loop
 1017   065C             .idp: 
 1018   065C 23          	inc		hl							; vamos comparar o ID do produto
-1019   065D 3A FC 09    	ld		a, (flashIdProd)
+1019   065D 3A 13 0A    	ld		a, (flashIdProd)
 1020   0660 BE          	cp		(hl)						; ID do produto bate?
 1021   0661 28 05       	jr		z, .ok						; beleza, identificamos a flash
 1022   0663 1E 06       	ld		e, 6
@@ -1398,15 +1398,15 @@
 1025   0668             .ok: 
 1026   0668 23          	inc		hl
 1027   0669 5E 23 56 2B 	ld		de, (hl)					; vamos pegar a string do fabricante
-1028   066D ED 53 FE 09 	ld		(flashManPoint), de			; e salvar
+1028   066D ED 53 15 0A 	ld		(flashManPoint), de			; e salvar
 1029   0671 23          	inc		hl
 1030   0672 23          	inc		hl
 1031   0673 5E 23 56 2B 	ld		de, (hl)					; vamos pegar a string do produto
-1032   0677 ED 53 00 0A 	ld		(flashProdPoint), de		; e salvar
+1032   0677 ED 53 17 0A 	ld		(flashProdPoint), de		; e salvar
 1033   067B 23          	inc		hl
 1034   067C 23          	inc		hl
 1035   067D 7E          	ld		a, (hl)						; vamos pegar o algoritmo
-1036   067E 32 FD 09    	ld		(flashAlg), a				; e salvar
+1036   067E 32 14 0A    	ld		(flashAlg), a				; e salvar
 1037   0681             .naoId: 
 1038   0681 D1          	pop		de
 1039   0682 C1          	pop		bc
@@ -1561,125 +1561,134 @@
 1155   092E             
 1156   092E             tblFlash: 
 1157   092E 1F 07       	.db		$1F, $07
-1158   0930 75 09       		.dw strAtmel
-1159   0932 8F 09       		.dw strAt49f002
+1158   0930 7C 09       		.dw strAtmel
+1159   0932 9B 09       		.dw strAt49f002
 1160   0934 01          		.db ALG_BYTE
 1161   0935 1F 08       	.db		$1F, $08
-1162   0937 75 09       		.dw strAtmel
-1163   0939 98 09       		.dw	strAt49F002t
+1162   0937 7C 09       		.dw strAtmel
+1163   0939 A4 09       		.dw	strAt49F002t
 1164   093B 01          		.db ALG_BYTE
 1165   093C 1F 17       	.db		$1F, $17
-1166   093E 75 09       		.dw strAtmel
-1167   0940 A2 09       		.dw	strAt49f010
+1166   093E 7C 09       		.dw strAtmel
+1167   0940 AE 09       		.dw	strAt49f010
 1168   0942 01          		.db ALG_BYTE
 1169   0943 1F D5       	.db		$1F, $D5
-1170   0945 75 09       		.dw strAtmel
-1171   0947 AB 09       		.dw strAt29c010a
+1170   0945 7C 09       		.dw strAtmel
+1171   0947 B7 09       		.dw strAt29c010a
 1172   0949 02          		.db ALG_PAGE
 1173   094A 01 20       	.db		$01, $20
-1174   094C 7C 09       		.dw strAMD
-1175   094E B5 09       		.dw	strAm29F010
+1174   094C 83 09       		.dw strAMD
+1175   094E C1 09       		.dw	strAm29F010
 1176   0950 01          		.db	ALG_BYTE
 1177   0951 BF 07       	.db		$BF, $07
-1178   0953 81 09       		.dw	strSST
-1179   0955 BE 09       		.dw	strSst29ee010
+1178   0953 88 09       		.dw	strSST
+1179   0955 CA 09       		.dw	strSst29ee010
 1180   0957 02          		.db	ALG_PAGE
 1181   0958 BF B6       	.db		$BF, $B6
-1182   095A 81 09       		.dw	strSST
-1183   095C C9 09       		.dw	strSst39sf020
+1182   095A 88 09       		.dw	strSST
+1183   095C D5 09       		.dw	strSst39sf020
 1184   095E 01          		.db	ALG_BYTE
 1185   095F DA 0B       	.db		$DA, $0B
-1186   0961 86 09       		.dw	strWinb
-1187   0963 D4 09       		.dw	strW49f002un
+1186   0961 92 09       		.dw	strWinb
+1187   0963 E0 09       		.dw	strW49f002un
 1188   0965 01          		.db	ALG_BYTE
 1189   0966 DA 25       	.db		$DA, $25
-1190   0968 86 09       		.dw	strWinb
-1191   096A DF 09       		.dw	strW49f002b
+1190   0968 92 09       		.dw	strWinb
+1191   096A EB 09       		.dw	strW49f002b
 1192   096C 01          		.db	ALG_BYTE
 1193   096D DA A1       	.db		$DA, $A1
-1194   096F 86 09       		.dw	strWinb
-1195   0971 E8 09       		.dw	strW39f010
+1194   096F 92 09       		.dw	strWinb
+1195   0971 F4 09       		.dw	strW39f010
 1196   0973 01          		.db	ALG_BYTE
-1197   0974 00          	.db		0
-1198   0975             
-1199   0975             strAtmel: 
-1200   0975             	.db		"Atmel $"
-1200   0975 41746D656C2024
-1201   097C             strAMD: 
-1202   097C 414D442024  	.db		"AMD $"
-1203   0981             strSST: 
-1204   0981 5353542024  	.db		"SST $"
-1205   0986             strWinb: 
-1206   0986             	.db		"Winbond $"
-1206   0986 57696E626F6E642024
-1207   098F             strAt49f002: 
-1208   098F             	.db		"AT49F002$"
-1208   098F 415434394630303224
-1209   0998             strAt49F002t: 
-1210   0998             	.db		"AT49F002T$"
-1210   0998 41543439463030325424
-1211   09A2             strAt49f010: 
-1212   09A2             	.db		"AT49F010$"
-1212   09A2 415434394630313024
-1213   09AB             strAt29c010a: 
-1214   09AB             	.db		"AT29C010A$"
-1214   09AB 41543239433031304124
-1215   09B5             strAm29F010: 
-1216   09B5             	.db		"AM29F010$"
-1216   09B5 414D32394630313024
-1217   09BE             strSst29ee010: 
-1218   09BE             	.db		"SST29EE010$"
-1218   09BE 5353543239454530313024
-1219   09C9             strSst39sf020: 
-1220   09C9             	.db		"SST39SF020$"
-1220   09C9 5353543339534630323024
-1221   09D4             strW49f002un: 
-1222   09D4             	.db		"W49F002U/N$"
-1222   09D4 57343946303032552F4E24
-1223   09DF             strW49f002b: 
-1224   09DF             	.db		"W49F002B$"
-1224   09DF 573439463030324224
-1225   09E8             strW39f010: 
-1226   09E8             	.db		"W39F010$"
-1226   09E8 5733394630313024
-1227   09F0             
-1228   09F0             ; *** VARIABLES ***
-1229   09F0             
-1230   09F0 00 00       savesp: 			.dw	0					; stack pointer
-1231   09F2 00          savecpu: 		.db	0					; cpu mode in Turbo R
-1232   09F3 00          savecursor: 		.db	0					; cursor
-1233   09F4 00          dos: 			.db	0					; dos version
-1234   09F5 00          system: 			.db	0					; msx version
-1235   09F6 00          options: 		.db	0					; options variable 1
-1236   09F7 00          pages: 			.db	0					; 16 Kb Pages
-1237   09F8 00          actualpage: 		.db	0					; Temporal page for load
-1238   09F9 FF          thisslt: 		.db	0FFh				; sigslot flag
-1239   09FA 00          flashslt: 		.db	0					; slot for flash
-1240   09FB 00          flashIdMan: 		.db 0					; Flash Manufacturer ID
-1241   09FC 00          flashIdProd: 	.db 0					; Flash Product ID
-1242   09FD 00          flashAlg		.db 0					; Flash algorithm
-1243   09FE 00 00       flashManPoint: 	.dw 0					; Flash manufacturer string pointer
-1244   0A00 00 00       flashProdPoint: 	.dw	0					; Flash product string pointer
-1245   0A02 00          erasedelay: 		.db	0					; tmp variable for loop times delay
-1246   0A03 00          togglebit: 		.db 0
-1247   0A04 00          sizefiletmp: 	.ds	4					; tmp variable for READMAX Code
-1248   0A08 00          fileHandle: 		.db	0					; DOS 2 File Handle
-1249   0A09 00          fileNameDOS2: 	.ds	64					; Tmp for fileName
-1250   0A49             fileNameDOS1: 	.db "        "			; DOS1 fileName for DOS1 Code
-1250   0A49 2020202020202020
-1251   0A51 20 20 20    filenDOS1Ext: 	.db	"   "
-1252   0A54 00          				.ds	4
-1253   0A58             
-1254   0A58             ; *** FCB DOS 1 ***
-1255   0A58             FCB: 
-1256   0A58 00          unidad: 		.db	0
-1257   0A59 00          fileName: 	.ds	8
-1258   0A61 00          extname: 	.ds	3
-1259   0A64 00 00       			.dw	0
-1260   0A66 00 00       registro: 	.dw	0
-1261   0A68 00          sizefile: 	.ds	4
-1262   0A6C 00          			.ds	13
-1263   0A79             sizeread: 
-1264   0A79 00          			.ds	4
-1265   0A7D 00          			.db	0
-1266   0A7E             
+1197   0974 20 20       	.db		$20, $20
+1198   0976 8D 09       		.dw	strSTM
+1199   0978 FC 09       		.dw	strSTM29F010B
+1200   097A 02          		.db	ALG_PAGE
+1201   097B 00          	.db		0
+1202   097C             
+1203   097C             strAtmel: 
+1204   097C             	.db		"Atmel $"
+1204   097C 41746D656C2024
+1205   0983             strAMD: 
+1206   0983 414D442024  	.db		"AMD $"
+1207   0988             strSST: 
+1208   0988 5353542024  	.db		"SST $"
+1209   098D             strSTM: 
+1210   098D 53544D2024  	.db		"STM $"
+1211   0992             strWinb: 
+1212   0992             	.db		"Winbond $"
+1212   0992 57696E626F6E642024
+1213   099B             strAt49f002: 
+1214   099B             	.db		"AT49F002$"
+1214   099B 415434394630303224
+1215   09A4             strAt49F002t: 
+1216   09A4             	.db		"AT49F002T$"
+1216   09A4 41543439463030325424
+1217   09AE             strAt49f010: 
+1218   09AE             	.db		"AT49F010$"
+1218   09AE 415434394630313024
+1219   09B7             strAt29c010a: 
+1220   09B7             	.db		"AT29C010A$"
+1220   09B7 41543239433031304124
+1221   09C1             strAm29F010: 
+1222   09C1             	.db		"AM29F010$"
+1222   09C1 414D32394630313024
+1223   09CA             strSst29ee010: 
+1224   09CA             	.db		"SST29EE010$"
+1224   09CA 5353543239454530313024
+1225   09D5             strSst39sf020: 
+1226   09D5             	.db		"SST39SF020$"
+1226   09D5 5353543339534630323024
+1227   09E0             strW49f002un: 
+1228   09E0             	.db		"W49F002U/N$"
+1228   09E0 57343946303032552F4E24
+1229   09EB             strW49f002b: 
+1230   09EB             	.db		"W49F002B$"
+1230   09EB 573439463030324224
+1231   09F4             strW39f010: 
+1232   09F4             	.db		"W39F010$"
+1232   09F4 5733394630313024
+1233   09FC             strSTM29F010B: 
+1234   09FC             	.db		"STM29F010B$"
+1234   09FC 53544D3239463031304224
+1235   0A07             
+1236   0A07             ; *** VARIABLES ***
+1237   0A07             
+1238   0A07 00 00       savesp: 			.dw	0					; stack pointer
+1239   0A09 00          savecpu: 		.db	0					; cpu mode in Turbo R
+1240   0A0A 00          savecursor: 		.db	0					; cursor
+1241   0A0B 00          dos: 			.db	0					; dos version
+1242   0A0C 00          system: 			.db	0					; msx version
+1243   0A0D 00          options: 		.db	0					; options variable 1
+1244   0A0E 00          pages: 			.db	0					; 16 Kb Pages
+1245   0A0F 00          actualpage: 		.db	0					; Temporal page for load
+1246   0A10 FF          thisslt: 		.db	0FFh				; sigslot flag
+1247   0A11 00          flashslt: 		.db	0					; slot for flash
+1248   0A12 00          flashIdMan: 		.db 0					; Flash Manufacturer ID
+1249   0A13 00          flashIdProd: 	.db 0					; Flash Product ID
+1250   0A14 00          flashAlg		.db 0					; Flash algorithm
+1251   0A15 00 00       flashManPoint: 	.dw 0					; Flash manufacturer string pointer
+1252   0A17 00 00       flashProdPoint: 	.dw	0					; Flash product string pointer
+1253   0A19 00          erasedelay: 		.db	0					; tmp variable for loop times delay
+1254   0A1A 00          togglebit: 		.db 0
+1255   0A1B 00          sizefiletmp: 	.ds	4					; tmp variable for READMAX Code
+1256   0A1F 00          fileHandle: 		.db	0					; DOS 2 File Handle
+1257   0A20 00          fileNameDOS2: 	.ds	64					; Tmp for fileName
+1258   0A60             fileNameDOS1: 	.db "        "			; DOS1 fileName for DOS1 Code
+1258   0A60 2020202020202020
+1259   0A68 20 20 20    filenDOS1Ext: 	.db	"   "
+1260   0A6B 00          				.ds	4
+1261   0A6F             
+1262   0A6F             ; *** FCB DOS 1 ***
+1263   0A6F             FCB: 
+1264   0A6F 00          unidad: 		.db	0
+1265   0A70 00          fileName: 	.ds	8
+1266   0A78 00          extname: 	.ds	3
+1267   0A7B 00 00       			.dw	0
+1268   0A7D 00 00       registro: 	.dw	0
+1269   0A7F 00          sizefile: 	.ds	4
+1270   0A83 00          			.ds	13
+1271   0A90             sizeread: 
+1272   0A90 00          			.ds	4
+1273   0A94 00          			.db	0
+1274   0A95             

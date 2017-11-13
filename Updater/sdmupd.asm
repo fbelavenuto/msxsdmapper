@@ -1193,6 +1193,10 @@ tblFlash:
 		.dw	strWinb
 		.dw	strW39f010
 		.db	ALG_BYTE
+	.db		$20, $20
+		.dw	strSTM
+		.dw	strSTM29F010B
+		.db	ALG_PAGE
 	.db		0
 
 strAtmel:
@@ -1201,6 +1205,8 @@ strAMD:
 	.db		"AMD $"
 strSST:
 	.db		"SST $"
+strSTM:
+	.db		"STM $"
 strWinb:
 	.db		"Winbond $"
 strAt49f002:
@@ -1223,6 +1229,8 @@ strW49f002b:
 	.db		"W49F002B$"
 strW39f010:
 	.db		"W39F010$"
+strSTM29F010B:
+	.db		"STM29F010B$"
 
 ; *** VARIABLES ***
 
