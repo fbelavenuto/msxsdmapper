@@ -17,14 +17,16 @@ Please see the CERN OHL v.1.1 for applicable conditions
   Este projeto implementa uma interface em forma de cartucho para adicionar um
 dispositivo de armazenamento em massa utilizando até dois cartões SD (Secure
 Digital) e uma Mapper ou Megaram de 512K para computadores da linha MSX.
+  O cartão SD pode ser padrão SD ou SDHC, o que limita o tamanho em no máximo
+32GB.
   Foi utilizado como sistema operacional o Nextor [1] sendo desenvolvido somente
-o driver para se ter acesso aos dois cartões SD. O Nextor é um projeto fechado,
-sendo permitido o desenvolvimento de um driver open-source.
+o driver para se ter acesso aos dois cartões SD. O Nextor agora se tornou um
+projeto aberto em 2018.
   O Nextor é uma evolução do MSX-DOS 2 tendo nativamente suporte a partições FAT16
-de até 4GB, podendo ter 4 partições por cartão SD. É necessário 128KB de Mapper no
-mínimo para utilizar o Nextor com acesso à sub-diretórios, menos que 128K de mapper
-permite somente o uso do kernel do MSXDOS1 limitando em partições com FAT12 e
-máximo de 16MB por partição.
+de até 4GB, podendo ter 4 partições por cartão SD. Isso limita o máximo de uso do
+cartão SD em 16GB. É necessário 128KB de Mapper no mínimo para utilizar o Nextor
+com acesso à sub-diretórios, menos que 128K de mapper permite somente o uso do
+kernel do MSXDOS1 limitando em partições com FAT12 e máximo de 16MB por partição.
   Uma chave seleciona entre os modos Mapper ou Megaram. A Megaram é um projeto do
 Ademir Carchano e permite executar ROMs de jogos/programas de cartuchos Megarom.
   A função Mapper/Megaram pode ser desativada por uma outra chave e é útil no caso
