@@ -149,9 +149,9 @@ begin
 	ffff    <= AND_REDUCE(addr_bus);
 
 	-- Slot Selects
-	sltsl_c		<= sltsl_n      when dis_mapper = '1' else '1';
-	sltsl_rom	<= slt_exp_n(1) when dis_mapper = '1' else sltsl_n;
-	sltsl_ram	<= slt_exp_n(3) when dis_mapper = '1' else '1';
+	sltsl_c		<= sltsl_n;--      when dis_mapper = '1' else '1';
+	sltsl_rom	<= slt_exp_n(0) when dis_mapper = '1' else slt_exp_n(1);
+	sltsl_ram	<= slt_exp_n(1) when dis_mapper = '1' else slt_exp_n(0);
 
 	-- Enable portas I/O
 	io_cs			<= not iorq_n and m1_n;

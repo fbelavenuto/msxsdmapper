@@ -456,11 +456,14 @@ DRV_INIT:
 
 
 SDMAPPERINIT:		; This block is exclusive for the SD-Mapper
-	ld	de, strMr_mp_desativada
+	ld	de, strMemSS0
 	call	modoSPI
-	ld	a, (PORTCFG)		; testar se mapper/megaram esta ativa
+	ld	a, (PORTCFG)
 	and	$10
-	jr	z,.print		; desativada, pula
+	jr	z,.print1
+	ld	de, strSDSS0
+.print1:
+	call	printString
 	ld	de, strMapper
 	ld	a, (PORTCFG)		; ativa, testar se eh mapper ou megaram
 	and	$20
@@ -2138,12 +2141,14 @@ strVazio:
 strNaoIdentificado:
 	db	"Unknown!",13,10,0
 			;----------------------------------------
-strMr_mp_desativada:
-	db	"Slot expander/Mapper/MegaRAM disabled",13,10,0
+strMemSS0:
+	db	"Memory subslot 0",13,10,0
+strSDSS0:
+	db	"SD subslot 0",13,10,0
 strMapper:
-	db	"Slot expanded and Memory Mapper enabled",13,10,0
+	db	"Memory Mapper enabled",13,10,0
 strMegaram:
-	db	"Slot expander and MegaRAM enabled",13,10,0
+	db	"MegaRAM enabled",13,10,0
 strSDV1:
 	db	"SDV1 - ",0
 strSDV2:
