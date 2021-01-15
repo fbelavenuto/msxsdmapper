@@ -1,3 +1,7 @@
+*** Projeto descontinuado ***
+
+Nova vers√£o em https://github.com/fbelavenuto/msxsdmapperv2
+
 Projeto SD Mapper/Megaram 512K para MSX
 
 Copyright (c) 2014
@@ -15,46 +19,46 @@ Please see the CERN OHL v.1.1 for applicable conditions
 
 
   Este projeto implementa uma interface em forma de cartucho para adicionar um
-dispositivo de armazenamento em massa utilizando atÈ dois cartıes SD (Secure
+dispositivo de armazenamento em massa utilizando at√© dois cart√µes SD (Secure
 Digital) e uma Mapper ou Megaram de 512K para computadores da linha MSX.
-  O cart„o SD pode ser padr„o SD ou SDHC, o que limita o tamanho em no m·ximo
+  O cart√£o SD pode ser padr√£o SD ou SDHC, o que limita o tamanho em no m√°ximo
 32GB.
   Foi utilizado como sistema operacional o Nextor [1] sendo desenvolvido somente
-o driver para se ter acesso aos dois cartıes SD. O Nextor agora se tornou um
+o driver para se ter acesso aos dois cart√µes SD. O Nextor agora se tornou um
 projeto aberto em 2018.
-  O Nextor È uma evoluÁ„o do MSX-DOS 2 tendo nativamente suporte a partiÁıes FAT16
-de atÈ 4GB, podendo ter 4 partiÁıes por cart„o SD. Isso limita o m·ximo de uso do
-cart„o SD em 16GB. … necess·rio 128KB de Mapper no mÌnimo para utilizar o Nextor
-com acesso ‡ sub-diretÛrios, menos que 128K de mapper permite somente o uso do
-kernel do MSXDOS1 limitando em partiÁıes com FAT12 e m·ximo de 16MB por partiÁ„o.
-  Uma chave seleciona entre os modos Mapper ou Megaram. A Megaram È um projeto do
+  O Nextor √© uma evolu√ß√£o do MSX-DOS 2 tendo nativamente suporte a parti√ß√µes FAT16
+de at√© 4GB, podendo ter 4 parti√ß√µes por cart√£o SD. Isso limita o m√°ximo de uso do
+cart√£o SD em 16GB. √â necess√°rio 128KB de Mapper no m√≠nimo para utilizar o Nextor
+com acesso √† sub-diret√≥rios, menos que 128K de mapper permite somente o uso do
+kernel do MSXDOS1 limitando em parti√ß√µes com FAT12 e m√°ximo de 16MB por parti√ß√£o.
+  Uma chave seleciona entre os modos Mapper ou Megaram. A Megaram √© um projeto do
 Ademir Carchano e permite executar ROMs de jogos/programas de cartuchos Megarom.
-  A funÁ„o Mapper/Megaram pode ser desativada por uma outra chave e È ˙til no caso
-de usar a interface em um MSX que j· tenha Mapper e n„o quiser usar a Megaram.
-  Foi criado um utilit·rio chamado "sdmupd.com" para poder atualizar a flash pelo
-prÛprio MSX.
-  Para compilar o driver e o utilit·rio sdmupd.com utilize o cross-compiler
-SJASMPLUS [2] e para compilar o cÛdigo do CPLD utilize o Xilinx ISE Webpack [3].
-  Agradecimentos ao Ademir Carchano pela invenÁ„o da Megaram, ao Luciano Sturaro
+  A fun√ß√£o Mapper/Megaram pode ser desativada por uma outra chave e √© √∫til no caso
+de usar a interface em um MSX que j√° tenha Mapper e n√£o quiser usar a Megaram.
+  Foi criado um utilit√°rio chamado "sdmupd.com" para poder atualizar a flash pelo
+pr√≥prio MSX.
+  Para compilar o driver e o utilit√°rio sdmupd.com utilize o cross-compiler
+SJASMPLUS [2] e para compilar o c√≥digo do CPLD utilize o Xilinx ISE Webpack [3].
+  Agradecimentos ao Ademir Carchano pela inven√ß√£o da Megaram, ao Luciano Sturaro
 pelo roteamento da placa e a comunidade MSXBR-L pelo apoio e incentivo.
-  Detalhes tÈcnicos:
-  - O cÛdigo do CPLD implementa toda a lÛgica necess·ria, implementando um expansor
-    de slots padr„o, uma porta SPI modo 0, o controle da MegaROM padr„o ASCII16
+  Detalhes t√©cnicos:
+  - O c√≥digo do CPLD implementa toda a l√≥gica necess√°ria, implementando um expansor
+    de slots padr√£o, uma porta SPI modo 0, o controle da MegaROM padr√£o ASCII16
     utilizada pelo Nextor e o controle da Mapper ou Megaram de 512K.
   - Ao ativar a mapper/megaram, a interface ativa o expansor de slots, e com isso a
-    interface funciona somente em slots n„o-expandidos. PorÈm, se desativar a
-    mapper/megaram, o expansor de slots È desativado, permitindo utilizar o
+    interface funciona somente em slots n√£o-expandidos. Por√©m, se desativar a
+    mapper/megaram, o expansor de slots √© desativado, permitindo utilizar o
     dispositivo de armazenamento em massa em slots expandidos.
-  - A porta SPI implementada utiliza mapa de memÛria de $4000 a $48FF, sendo o 
-    chaveamento entre ROM e SPI configurado pela escrita no endereÁo $6001.
-  - Foi previsto a atualizaÁ„o da memÛria flash por software. Para isto foi
-    implementado a porta 0x5F que controla a ativaÁ„o ou n„o da gravaÁ„o da flash.
-    O bit 7 controla a permiss„o de gravaÁ„o e os bits 2, 1 e 0 controlam a paginaÁ„o
-    de 16KB. Ao ativar o bit 7 a flash È mapeada em qualquer p·gina (repete o mesmo
-    espaÁo de 16K nas 4 p·ginas) e os bits 2, 1 e 0 controlam qual das 8 p·ginas da
-    flash ser· mapeada. O sinal /WR da flash sÛ È gerado quando o bit 7 est· ativo.
-    O utilit·rio sdmupd.com utiliza esta porta para poder atualizar a flash pelo
-    prÛprio MSX.
+  - A porta SPI implementada utiliza mapa de mem√≥ria de $4000 a $48FF, sendo o 
+    chaveamento entre ROM e SPI configurado pela escrita no endere√ßo $6001.
+  - Foi previsto a atualiza√ß√£o da mem√≥ria flash por software. Para isto foi
+    implementado a porta 0x5F que controla a ativa√ß√£o ou n√£o da grava√ß√£o da flash.
+    O bit 7 controla a permiss√£o de grava√ß√£o e os bits 2, 1 e 0 controlam a pagina√ß√£o
+    de 16KB. Ao ativar o bit 7 a flash √© mapeada em qualquer p√°gina (repete o mesmo
+    espa√ßo de 16K nas 4 p√°ginas) e os bits 2, 1 e 0 controlam qual das 8 p√°ginas da
+    flash ser√° mapeada. O sinal /WR da flash s√≥ √© gerado quando o bit 7 est√° ativo.
+    O utilit√°rio sdmupd.com utiliza esta porta para poder atualizar a flash pelo
+    pr√≥prio MSX.
 
 
 [1] http://www.konamiman.com/msx/msx-e.html#nextor
