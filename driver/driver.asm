@@ -622,12 +622,13 @@ leitura:
 	ret
 
 escrita:
-	call	modoSPI
 	; Test if the card is write protected
 	ld	c,(iy+WRKAREA.NUMSD)	; cartao atual (1 ou 2)
 	sla	c		; desloca para apontar para bits 2 ou 3 para cartoes 1 ou 2 respectivamente
 	sla	c
+	call	modoSPI
 	ld	a,(PORTCFG)	; testar se cartao esta protegido
+	call	modoROM
 	and	c
 	jr	z,.ok
 	ld	a, EWPROT	; disco protegido
@@ -650,6 +651,7 @@ escrita:
 	ld	d, a
 	pop	af		; HL = ponteiro destino
 	ld	e, a		; BC DE = 32 bits numero do bloco
+	call	modoSPI
 	call	GravarBloco	; chamar rotina de gravacao de dados
 	call	modoROM
 	jr	nc,.ok2
@@ -1447,7 +1449,7 @@ WAIT_RESP_FE:
 	push	bc
 	call	WAIT_RESP_NO_FF	; esperar resposta diferente de $FF
 	pop	bc
-	cp	$FE		; resposta é $FE ?
+	cp	$FE		; resposta ï¿½ $FE ?
 	ret	z		; sim, retornamos com carry=0
 	djnz	.loop
 	scf			; erro, carry=1
