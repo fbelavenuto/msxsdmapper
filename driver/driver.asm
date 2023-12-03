@@ -62,7 +62,7 @@ VER_REV		equ	6
 ; SPI addresses. Check the Technical info above for the bit contents
 
 CHAVEIASPI	= $6001 ; Mode config register
-PORTCFG		= $4800	; Interface status and card select register 
+PORTCFG		= $4800	; Interface status and card select register
 PORTSPI		= $4000	; SPI data port
 
 ; Comandos SPI:
@@ -87,13 +87,13 @@ ACMD41	= 41 | $40
 BCSD 		ds 16	; Card Specific Data
 BCID1		ds 16	; Card-ID of card1
 BCID2		ds 16	; Card-ID of card2
-NUMSD		db 	; Currently selected card: 1 or 2 
-CARDFLAGS	db 	; Flags that indicate card-change or card error 
-NUMBLOCKS	db 	; Number of blocks in multi-block operations 
+NUMSD		db 	; Currently selected card: 1 or 2
+CARDFLAGS	db 	; Flags that indicate card-change or card error
+NUMBLOCKS	db 	; Number of blocks in multi-block operations
 BLOCKS1		ds 3	; 3 bytes. Size of card1, in blocks.
 BLOCKS2		ds 3	; 3 bytes. Size of card2, in blocks.
 TEMP		db	; Temporary data
-TRLDIR		ds 8	; R800 data transfer helper 
+TRLDIR		ds 8	; R800 data transfer helper
  ENDS
 
 
@@ -140,7 +140,7 @@ DRV_START:
 ;This is a 2 byte buffer to store the address of code to be executed.
 ;It is used by some of the kernel page 0 routines.
 
-CODE_ADD:	equ	0F84Ch
+CODE_ADD:	equ	0F1D0h
 
 
 ;-----------------------------------------------------------------------------
@@ -325,7 +325,7 @@ DRV_TIMI:
 	ret
 
 
-; Skips the interface r/w registers 
+; Skips the interface r/w registers
 	ds	$4800-$, $FF
 
 
@@ -361,7 +361,7 @@ DRV_TIMI:
 ;     get two allocated drives.)
 
 DRV_INIT:
-	or	a		; Is this the 1st call? 
+	or	a		; Is this the 1st call?
 	jr	nz,.call2
 ; 1st call:
 	ld	hl,WRKAREA.TRLDIR ; size of work area are needed for Z80
@@ -375,11 +375,11 @@ DRV_INIT:
 
 
 .call2:
-; 2nd call: 
+; 2nd call:
 	call	MYSETSCR		; Set the screen mode
 	call	pegaWorkArea		; HL=IY=Work area pointer
 
-	ld	de,strTitle		; prints the title 
+	ld	de,strTitle		; prints the title
 	call	printString
 
 	call	SDMAPPERINIT		; SD-Mapper exclusive init
@@ -577,19 +577,19 @@ DEV_RW:
 	ret
 .saicomerroidl:
 	pop	af
-	ld	a, EIDEVL	; error: Invalid device or LUN 
+	ld	a, EIDEVL	; error: Invalid device or LUN
 	ld	b, 0
 	ret
 .ok:
-	ld	(iy+WRKAREA.NUMBLOCKS), b	; save the number of blocks to transfer 
+	ld	(iy+WRKAREA.NUMBLOCKS), b	; save the number of blocks to transfer
 	exx
-	call	calculaCIDoffset	; ix=CID offset 
+	call	calculaCIDoffset	; ix=CID offset
 	ld	a,(ix+15)	; verificar se eh SDV1 ou SDV2
 	ld	ixl,a		; ixl=SDcard version
-	pop	af		; a=Device number, f=read/write flag 
+	pop	af		; a=Device number, f=read/write flag
 	exx			; hl=Source/dest Address, de=Pointer to sect#
 	ld	ixh, b 		; ixh=Number of blocks to transfer
-	jr	c,escrita	; Skip if it's a write operation 
+	jr	c,escrita	; Skip if it's a write operation
 leitura:
 	ld	a, (de)		; 1. n. bloco
 	push	af
@@ -622,12 +622,13 @@ leitura:
 	ret
 
 escrita:
-	call	modoSPI
 	; Test if the card is write protected
 	ld	c,(iy+WRKAREA.NUMSD)	; cartao atual (1 ou 2)
 	sla	c		; desloca para apontar para bits 2 ou 3 para cartoes 1 ou 2 respectivamente
 	sla	c
+	call	modoSPI
 	ld	a,(PORTCFG)	; testar se cartao esta protegido
+	call	modoROM
 	and	c
 	jr	z,.ok
 	ld	a, EWPROT	; disco protegido
@@ -650,6 +651,7 @@ escrita:
 	ld	d, a
 	pop	af		; HL = ponteiro destino
 	ld	e, a		; BC DE = 32 bits numero do bloco
+	call	modoSPI
 	call	GravarBloco	; chamar rotina de gravacao de dados
 	call	modoROM
 	jr	nc,.ok2
@@ -913,7 +915,7 @@ LUN_INFO:
 	ld	a, 1		; informar erro
 	ret
 .ok:
-	exx	
+	exx
 	; ***FixMe: Will have to check disk-change, and daisy chain this as a
 	; software flag so DEV_STATUS can also be notified
 	call	modoSPI
@@ -940,7 +942,7 @@ LUN_INFO:
 	inc	hl
 	ld	(hl),0		; The highest byte must be set to 0, as SDcards
 				; have 24bit total block numbers, and Nextor
-				; requires 32bits. 
+				; requires 32bits.
 	inc	hl
 	ld	(hl),1		; flags: dispositivo R/W removivel
 	inc	hl
@@ -997,7 +999,7 @@ testaCartao:
 	ld	a, (PORTCFG)	; testar se cartao esta inserido
 	call	modoROM
 	and	c		; C contem 1 se cartao 1, 2 se cartao 2
-	jr	nz,.saicomerro				
+	jr	nz,.saicomerro
 	ld	a, (iy+WRKAREA.NUMSD)		; conseguimos detectar, tira erro nas flags
 	cpl			; inverte bits para fazer o AND
 	ld	c, a
@@ -1039,7 +1041,7 @@ calculaCIDoffset:
 	ld	e, WRKAREA.BCID2	; DE aponta para buffer BCID2
 .c1:
 	add	hl, de		; HL aponta para buffer correto
-	push	hl		
+	push	hl
 	pop	ix		; vamos colocar HL em IX
 	ret
 
@@ -1060,7 +1062,7 @@ calculaBLOCOSoffset:
 	ld	e, WRKAREA.BLOCKS2	; DE aponta para buffer BLOCKS2
 .c1:
 	add	hl, de		; HL aponta para buffer correto
-	push	hl		
+	push	hl
 	pop	ix		; Vamos colocar HL em IX
 	ret
 
@@ -1147,7 +1149,7 @@ detectaCartao:
 	ld	a, (hl)		; proximo byte
 	and	3		; 2 bits de C_SIZE_MUL
 	ld	b, a		; B contem os 2 bits de C_SIZE_MUL
-	inc	hl						
+	inc	hl
 	ld	a, (hl)		; proximo byte
 	and	$80		; 1 bit de C_SIZE_MUL
 	add	a, a		; rotaciona para esquerda jogando no carry
@@ -1389,7 +1391,7 @@ SD_SEND_CMD_2_ARGS_GET_R3:
 
 ; ------------------------------------------------
 ; Enviar comando em A com 4 bytes de parametros
-; em BC DE e enviar CRC correto se for CMD0 ou 
+; em BC DE e enviar CRC correto se for CMD0 ou
 ; CMD8 e aguardar processamento do cartao
 ; Output  : A=0 if there was no error
 ; Modifies:  AF, B, AF'
@@ -1447,7 +1449,7 @@ WAIT_RESP_FE:
 	push	bc
 	call	WAIT_RESP_NO_FF	; esperar resposta diferente de $FF
 	pop	bc
-	cp	$FE		; resposta é $FE ?
+	cp	$FE		; resposta ï¿½ $FE ?
 	ret	z		; sim, retornamos com carry=0
 	djnz	.loop
 	scf			; erro, carry=1
@@ -1472,7 +1474,7 @@ WAIT_RESP_NO_00:
 
 ; ------------------------------------------------
 ; Ativa (seleciona) cartao atual baixando seu /CS
-; Modify: AF 
+; Modify: AF
 ; ------------------------------------------------
 setaSDAtual:
 	ld	a, (PORTSPI)	; dummy read
@@ -1489,7 +1491,7 @@ setaSDAtual:
 ; ------------------------------------------------
 GravarBloco:
 	dec	ixl		; SDcard V1?
-	call	m,blocoParaByte	; Yes, convert blocks to bytes 
+	call	m,blocoParaByte	; Yes, convert blocks to bytes
 	call	setaSDAtual	; selecionar cartao atual
 	ld	a,ixh		; get Number of blocks to write
 	dec	a
@@ -1656,7 +1658,7 @@ terminaLeituraEscritaBloco:
 ; ------------------------------------------------
 LerBloco:
 	dec	ixl		; SDcard V1?
-	call	m,blocoParaByte	; Yes, convert blocks to bytes 
+	call	m,blocoParaByte	; Yes, convert blocks to bytes
 	call	setaSDAtual
 	ld	a,ixh		; get Number of blocks to write
 	dec	a
@@ -1726,7 +1728,7 @@ LerBloco:
 	call	SD_SEND_CMD_NO_ARGS
 	jp	.fim
 
-.r800s:	
+.r800s:
 	exx
 	call	GTR800LDIR
 	exx			; hl'=Pointer to R800LDIR helper routine
@@ -1778,9 +1780,9 @@ R800LDIR:
 ; ------------------------------------------------
 
 
-; ========================================================================== 
+; ==========================================================================
 ; Funcoes utilitarias
-; ========================================================================== 
+; ==========================================================================
 
 ; ------------------------------------------------
 ; Chaveia para modo SPI
@@ -2029,7 +2031,7 @@ MYSETSCR:
 INICHKSTOP:
 	ld	a,(INTFLG)
 	cp	4			; Was STOP pressed?
-	ret	nz			; No, quit as fast as possible 
+	ret	nz			; No, quit as fast as possible
 
 	; Handle STOP to pause and read messages, and ask for the copyright info
 	ld	de,strBootpaused
@@ -2069,14 +2071,14 @@ INICHKSTOP:
 	cp	'I'
 	ret	nz
 .showcopyright:
-	inc	b			; Inhibit further presses of the i key 
+	inc	b			; Inhibit further presses of the i key
 	ld	de,strCopyright
 	jp	printString
 
 
 
 ; ------------------------------------------------
-; Install the R800 data transfer helper routine on WorkArea 
+; Install the R800 data transfer helper routine on WorkArea
 ; ------------------------------------------------
 INSTR800HLP:
 	ld	a,(MSXVER)
@@ -2092,7 +2094,7 @@ INSTR800HLP:
 ; ------------------------------------------------
 ; Obtain the pointer to the R800 data transfer helper routine
 ; Input   : IY=Pointer to the WorkArea
-; Output  : HL=pointer to R800 data transfer helper routine 
+; Output  : HL=pointer to R800 data transfer helper routine
 ; Modifies: DE
 ; ------------------------------------------------
 GTR800LDIR:
