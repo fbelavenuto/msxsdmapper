@@ -497,7 +497,8 @@ DRV_DIRECT4:
 
 DEV_RW:
 	push	af
-	cp		3						; somente 2 dispositivos
+	cp		a
+	cp		3							; somente 2 dispositivos
 	jr nc,	.saicomerroidl
 	dec		c							; somente 1 logical unit
 	jr nz,	.saicomerroidl
@@ -627,7 +628,8 @@ escrita:
 
 DEV_INFO:
 	inc		b
-	cp		3						; somente 2 dispositivos
+	cp		a
+	cp		3							; somente 2 dispositivos
 	jr nc,	.saicomerro
 	push	hl
 	call	testaCartao					; verificar se cartao esta OK
@@ -759,7 +761,8 @@ DEV_INFO:
 ; DEV_STATUS itself. Please read the Driver Developer Guide for more info.
 
 DEV_STATUS:
-	cp		3						; 2 dispositivos somente
+	cp		a
+	cp		3							; 2 dispositivos somente
 	jr nc,	.saicomerro
 	dec		b							; 1 logical unit somente
 	jr nz,	.saicomerro
@@ -834,7 +837,8 @@ DEV_STATUS:
 ; For other types of device, these fields must be zero.
 
 LUN_INFO:
-	cp		3						; somente 2 dispositivo
+	cp		a
+	cp		3							; somente 2 dispositivo
 	jr nc,	.saicomerro
 	dec		b							; somente 1 logical unit
 	jr nz,	.saicomerro
