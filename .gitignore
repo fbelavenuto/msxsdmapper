@@ -37,6 +37,8 @@
 /CPLD/*.err
 /CPLD/xlnx_auto_0_xdb
 /CPLD/xst/work
-/Updater/NEW
 /driver/DRIVER.BIN
-/updater/SDMUPD.BIN
+/driver/DRIVER.LST
+/driver/SDMAPPER.ROM
+/updater/SDMUPD.COM
+/updater/SDMUPD.LST

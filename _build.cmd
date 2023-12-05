@@ -9,7 +9,7 @@ docker run --rm -it -v %cd%:/src fbelavenuto/8bitcompilers mknexrom Nextor/Nexto
 IF ERRORLEVEL 1 GOTO error
 
 echo Building Updater
-docker run --rm -it -v %cd%/updater:/src fbelavenuto/8bitcompilers N80 SDMUPD.ASM SDMUPD.BIN --listing-file SDMUPD.LST
+docker run --rm -it -v %cd%/updater:/src fbelavenuto/8bitcompilers N80 SDMUPD.ASM SDMUPD.COM --listing-file SDMUPD.LST
 IF ERRORLEVEL 1 GOTO error
 
 goto ok

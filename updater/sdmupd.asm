@@ -1,9 +1,13 @@
+	.CPU Z80
+	TITLE updater
+	.RELAB
+
 ; Projeto MSX SD Mapper
 
 ; Copyright (c) 2014
 ; Fabio Belavenuto
 ;
-; Baseado no código FL2 versão 2.2 de 29-12-2002  (c) Ramones 2002
+; Baseado no codigo FL2 versao 2.2 de 29-12-2002  (c) Ramones 2002
 ;
 ;
 ; This documentation describes Open Hardware and is licensed under the CERN OHL v. 1.1.
@@ -13,20 +17,15 @@
 ; SATISFACTORY QUALITY AND FITNESS FOR A PARTICULAR PURPOSE.
 ; Please see the CERN OHL v.1.1 for applicable conditions
 
+	org		#100
 
-	output	"sdmupd.com"
-
-	include	"bios.inc"
-	include	"bdos.inc"
-
-
-	org		COM_START_ADDR
-
+	include	"BIOS.INC"
+	include	"BDOS.INC"
 
 ; *** CONSTANTS ***
-IOFW		= $5F						; Porta de controle para gravacao da flash
-ALG_BYTE	= 1
-ALG_PAGE	= 2
+IOFW		equ #5F						; Porta de controle para gravacao da flash
+ALG_BYTE	equ 1
+ALG_PAGE	equ 2
 
 inicio:
 
@@ -72,14 +71,14 @@ init:
 checkFlash:
 	ld		de, strProcuraFlash
 	call	print						; Prints searching message
-	ld		a, $FF
+	ld		a, #FF
 	ld		(thisslt), a				; Inits SIGSLOT Routine
 .loop:
 	di
 	call	sigslot						; Calls the next slot (first one if first time)
-	cp		$FF							; Is it the last slot?
+	cp		#FF							; Is it the last slot?
 	jr		z, .naoachado				; Yes. FLASH was not found
-	ld		h, $80						; It is not the last slot. Placed it in page 2
+	ld		h, #80						; It is not the last slot. Placed it in page 2
 	call	ENASLT
 	call	checkDeviceID				; Searching flash by executing its ID_CHECK command
 	jr		c, .loop					; Not found in this slot, continue with next one
@@ -98,7 +97,7 @@ checkFlash:
 	ld		(strAchado.subslot), a		; ASCII conversion of the Subslot.
 
 	ld		a, (RAMAD2)
-	ld		h, $80
+	ld		h, #80
 	call	ENASLT						; Restoring page 2 (Memory again)
 
 	ld		de, strAchado
@@ -112,7 +111,7 @@ checkFlash:
 
 .naoachado:								; FLASH NOT FOUND
 	ld		a, (RAMAD2)
-	ld		h, $80
+	ld		h, #80
 	call	ENASLT						; Memory placed
 	ld		de, strNaoAchado
 	jp		printErro					; Error message, exiting program
@@ -125,13 +124,13 @@ checkFlash:
 ; -------------------------
 checkDeviceID:
 	di
-	ld		a, $F0						; Comando $F0 (Reset)
+	ld		a, #F0						; Comando #F0 (Reset)
 	call	flashSendCommand2
-	ld		a, $90						; Comando $90 (Software ID Entry)
+	ld		a, #90						; Comando #90 (Software ID Entry)
 	call	flashSendCommand2
-	ld		a, ($8000)					; Ler Manufacturer ID
+	ld		a, (#8000)					; Ler Manufacturer ID
 	ld		(flashIdMan), a				; e salvar
-	ld		a, ($8001)					; Ler Product ID
+	ld		a, (#8001)					; Ler Product ID
 	ld		(flashIdProd), a			; e salvar
 	call	flashIdent					; chamamos funcao que identifica flash
 	ld		a, (flashAlg)
@@ -142,7 +141,7 @@ checkDeviceID:
 	xor		a							; Carry = 0 - OK
 .sair:
 	push	af
-	ld		a, $F0						; Comando $F0 (Reset)
+	ld		a, #F0						; Comando #F0 (Reset)
 	call	flashSendCommand2
 	xor		a
 	out		(IOFW), a					; Desliga modo gravacao da Flash
@@ -168,20 +167,20 @@ checkDOS:
 checkSystem:
 	ld		a, (EXPTBL)
 	ld		hl, BASVER
-	call	RDSLT						; Check byte $2D (MSX version)
+	call	RDSLT						; Check byte #2D (MSX version)
 	ld		(system), a
 	cp		3							; Turbo R?
 	ret	c								; no, return
 	ld		iy, (EXPTBL - 1)			; is MSX Turbo R
-	ld		ix, $183
+	ld		ix, #183
 	call	CALSTL
-	or		$80
+	or		#80
 	ld		(savecpu), a				; save actual CPU mode
-	ld		a, $80						; and set Z80 for compatibility
+	ld		a, #80						; and set Z80 for compatibility
 
 systemSetCPU:
 	ld		iy, (EXPTBL - 1)
-	ld		ix, $180
+	ld		ix, #180
 	call	CALSTL
 	ret
 
@@ -374,7 +373,7 @@ loadFile:
 	ld		b, 8						; 8 blocos de 16K = 128K
 .loop:
 	push	bc
-	call	fillPage					; fill page 2 (read buffer) with $FF
+	call	fillPage					; fill page 2 (read buffer) with #FF
 	call	load16K						; and load one 16 K page to buffer
 	pop		bc
 	push	bc
@@ -406,14 +405,14 @@ loadFile:
 ; ------------------
 load16K:
 	; this code load 16 KB from file
-	; to buffer (page 2 $8000 - $BFFF)
+	; to buffer (page 2 #8000 - #BFFF)
 
 	ld		a, (RAMAD2)
-	ld		h, $80
+	ld		h, #80
 	call	ENASLT						; mem in page 2
 	ei
-	ld		de, $8000					; buffer = $8000
-	ld		hl, $4000					; length = $4000 (16K)
+	ld		de, #8000					; buffer = #8000
+	ld		hl, #4000					; length = #4000 (16K)
 	ld		a, (dos)
 	cp		2
 	jr		nc, .dos2					; if DOS 2 make <> load
@@ -433,10 +432,10 @@ load16K:
 ; Fill page 2 with FFH
 ; ---------------------
 fillPage:
-	ld		hl, $8000
-	ld		de, $8001
-	ld		bc, $3FFF
-	ld		(hl), $FF
+	ld		hl, #8000
+	ld		de, #8001
+	ld		bc, #3FFF
+	ld		(hl), #FF
 	ldir								; fill
 	ret
 
@@ -454,7 +453,7 @@ fillName:
 	jr		z, .p1						; 0 dec
 	cp		':'                     	; end
 	jr		z, .p2
-	cp		'\\'						; params
+	cp		'\'							; params
 	jr		z, .p2
 .p1:
 	dec		hl
@@ -480,7 +479,7 @@ delay:
 	push	de
 	push	bc							; this delay is for erasing operations
 	ld		a, (RAMAD1)
-	ld		h, $40
+	ld		h, #40
 	call	ENASLT						; set mem to page 1
 	ld		a, (erasedelay)				; loop times from delay.
 	ld		b, a
@@ -492,7 +491,7 @@ delay:
 	pop		bc
 	djnz	.loop
 	ld		a, (flashslt)
-	ld		h, $40
+	ld		h, #40
 	call	ENASLT						; return flash to page 1 (DOS1 Compatibility)
 	ei
 	pop		bc
@@ -509,7 +508,7 @@ delay:
 ; --------------------------------------------------------
 sigslot:
 	ld		a, (thisslt)				; Returns the next slot, starting by
-	cp		$FF							; slot 0. Returns #FF when there are not more slots
+	cp		#FF							; slot 0. Returns #FF when there are not more slots
 	jr		nz, .p1						; Modifies AF, BC, HL.
 	ld		a, (EXPTBL)
 	and		%10000000
@@ -545,7 +544,7 @@ sigslot:
 	ld		(thisslt), a
 	ret
 .nomaslt:
-	ld		a, $FF
+	ld		a, #FF
 	ret
 
 ; *** FLASH ROUTINES ***
@@ -559,17 +558,17 @@ sigslot:
 flashSendCommand1:
 	push	hl
 	push	af
-	ld		a, $81
+	ld		a, #81
 	out		(IOFW), a					; Ativa modo de gravacao e seleciona pagina 1 da flash
-	ld		hl, $5555					; Escreve no endereco absoluto da flash $5555
-	ld		(hl), $AA
-	ld		a, $80
+	ld		hl, #5555					; Escreve no endereco absoluto da flash #5555
+	ld		(hl), #AA
+	ld		a, #80
 	out		(IOFW), a					; Mantem modo de gravacao e seleciona pagina 0 da flash
-	ld		hl, $6AAA					; Escreve no endereco absoluto da flash $2AAA
-	ld		(hl), $55
-	ld		a, $81
+	ld		hl, #6AAA					; Escreve no endereco absoluto da flash #2AAA
+	ld		(hl), #55
+	ld		a, #81
 	out		(IOFW), a					; Mantem modo de gravacao e seleciona pagina 1 da flash
-	ld		hl, $5555					; Escreve no endereco absoluto da flash $5555
+	ld		hl, #5555					; Escreve no endereco absoluto da flash #5555
 	pop		af
 	ld		(hl), a						; Envia comando
 	pop		hl
@@ -584,17 +583,17 @@ flashSendCommand1:
 flashSendCommand2:
 	push	hl
 	push	af
-	ld		a, $81
+	ld		a, #81
 	out		(IOFW), a					; Ativa modo de gravacao e seleciona pagina 1 da flash
-	ld		hl, $9555					; Escreve no endereco absoluto da flash $5555
-	ld		(hl), $AA
-	ld		a, $80
+	ld		hl, #9555					; Escreve no endereco absoluto da flash #5555
+	ld		(hl), #AA
+	ld		a, #80
 	out		(IOFW), a					; Mantem modo de gravacao e seleciona pagina 0 da flash
-	ld		hl, $AAAA					; Escreve no endereco absoluto da flash $2AAA
-	ld		(hl), $55
-	ld		a, $81
+	ld		hl, #AAAA					; Escreve no endereco absoluto da flash #2AAA
+	ld		(hl), #55
+	ld		a, #81
 	out		(IOFW), a					; Mantem modo de gravacao e seleciona pagina 1 da flash
-	ld		hl, $9555					; Escreve no endereco absoluto da flash $5555
+	ld		hl, #9555					; Escreve no endereco absoluto da flash #5555
 	pop		af
 	ld		(hl), a						; Envia comando
 	pop		hl
@@ -610,23 +609,23 @@ flashSendCommand2:
 ; ----------------------
 writeFlash:
 	ld		a, (RAMAD2)
-	ld		h, $80
+	ld		h, #80
 	call	ENASLT						; mem to page 2 (DOS1)
 
 	ld		a, (flashslt)
-	ld		h, $40
+	ld		h, #40
 	call	ENASLT						; flash to page 1
 
-	ld		hl, $8000					; buffer pointer
-	ld		de, $4000					; flash pointer
+	ld		hl, #8000					; buffer pointer
+	ld		de, #4000					; flash pointer
 	ld		b, d
 	ld		c, e
 	di
 .loop:
-	ld		a, $A0						; Modo de gravacao de dados
+	ld		a, #A0						; Modo de gravacao de dados
 	call	flashSendCommand1
 	ld		a, (actualpage)
-	or		$80
+	or		#80
 	out		(IOFW), a					; select 16K page in Flash
 	call	.gravaByte					; program byte
 	jr		nz, .erro					; ERROR. Z = 0
@@ -641,7 +640,7 @@ writeFlash:
 	xor		a
 	out		(IOFW), a					; Desliga modo gravacao da Flash
 	ld		a, (RAMAD1)
-	ld		h, $40
+	ld		h, #40
 	call	ENASLT						; Mem to PAGE 1 (DOS 1 Compatibility)
 	pop		af
 	ret
@@ -681,16 +680,16 @@ eraseFlash:
 	ld		de, strApagarFlash
 	call	print						; Erase Text Show.
 	ld		a, (flashslt)
-	ld		h, $40
+	ld		h, #40
 	call	ENASLT						; set flash in page 1
 	di
 ;	xor		a
 ;	ld		(erasedelay), a				; delay de 256 ciclos
-	ld		a, $80						; Apaga chip
+	ld		a, #80						; Apaga chip
 	call	flashSendCommand1
-	ld		a, $10
+	ld		a, #10
 	call	flashSendCommand1
-	ld		hl, $4000
+	ld		hl, #4000
 	ld		a, (hl)
 	ld		(togglebit), a
 .loop:									; testa fim do erase por Toggle Bit
@@ -704,13 +703,13 @@ eraseFlash:
 ;	call	delay						; make programmed delay.
 ;	call	delay						; make programmed delay.
 ;	di
-	ld		a, $F0						; end command. Reset Command.
+	ld		a, #F0						; end command. Reset Command.
 	call	flashSendCommand1
 	xor		a
 	out		(IOFW), a					; Desliga modo gravacao da Flash
 	ei
 	ld		a, (RAMAD1)
-	ld		h, $40
+	ld		h, #40
 	call	ENASLT						; set mem to page 1
 	ld		de, strOk
 	call	print
@@ -759,7 +758,7 @@ cmpHLcomDE:
 callBdosCE:
 	call	BDOS
 	or		a
-	jp		nz, error
+	jp		nz, errord
 	ret
 
 ; -----------------
@@ -776,7 +775,7 @@ callBdos:
 ; print error
 ; call printErro and set DE pointer to error text
 ; -----------------------------------------------
-error:
+errord:
 	ld		de, strErro
 printErro:
 	ld		c, _STROUT
@@ -789,10 +788,10 @@ printErro:
 exitok:
 	call	closeFile					; close file (open or not)
 	ld		a, (RAMAD1)
-	ld		h, $40
+	ld		h, #40
 	call	ENASLT						; set mem to page 1
 	ld		a, (RAMAD2)
-	ld		h, $80
+	ld		h, #80
 	call	ENASLT						; set mem to page 2
 	ld		a, (system)
 	cp		3							; Turbo R?
@@ -971,13 +970,15 @@ showList:
 	ld		a, (hl)						; pega ID do produto
 	ld		(flashIdProd), a			; e salva
 	inc		hl
-	ld		de, (hl)					; vamos pegar a string do fabricante
+	ld		e, (hl)						; vamos pegar a string do fabricante
+	inc		hl
+	ld		d, (hl)
 	ld		(flashManPoint), de			; e salvar
 	inc		hl
+	ld		e, (hl)						; vamos pegar a string do produto
 	inc		hl
-	ld		de, (hl)					; vamos pegar a string do produto
+	ld		d, (hl)
 	ld		(flashProdPoint), de		; e salvar
-	inc		hl
 	inc		hl
 	ld		a, (hl)						; vamos pegar o algoritmo
 	ld		(flashAlg), a				; e salvar
@@ -1024,13 +1025,15 @@ flashIdent:
 	jr		.loop
 .ok:
 	inc		hl
-	ld		de, (hl)					; vamos pegar a string do fabricante
+	ld		e, (hl)						; vamos pegar a string do fabricante
+	inc		hl
+	ld		d, (hl)
 	ld		(flashManPoint), de			; e salvar
 	inc		hl
+	ld		e, (hl)						; vamos pegar a string do produto
 	inc		hl
-	ld		de, (hl)					; vamos pegar a string do produto
+	ld		d, (hl)
 	ld		(flashProdPoint), de		; e salvar
-	inc		hl
 	inc		hl
 	ld		a, (hl)						; vamos pegar o algoritmo
 	ld		(flashAlg), a				; e salvar
@@ -1043,230 +1046,231 @@ flashIdent:
 ; *** TEXTS ***
 
 strTitulo:
-	.db		"SD Mapper flash programmer utility"
-	.db		13, 10
-	.db		"(c) 2014 by Fabio Belavenuto"
+	db		"SD Mapper flash programmer utility"
+	db		13, 10
+	db		"(c) 2014 by Fabio Belavenuto"
 	; fall throw
 
 strCrLf:
-	.db		13, 10, '$'
+	db		13, 10, '$'
 
 strHelp:
-	.db		13, 10
-	.db		"Usage:", 13, 10
-	.db		"     sdmupd /opts <filename.ext>", 13, 10
-	.db		"Example: sdmupd DRIVER.ROM", 13, 10
-	.db		"         sdmupd /e", 13, 10
-	.db		13, 10
-	.db		"Options:", 13, 10
-	.db		"     /h : Show this help.", 13, 10
-	.db		"     /l : Show list of supported chips.", 13, 10
-	.db		"     /e : Only erase flash and exit.", 13, 10
-	.db		'$'
+	db		13, 10
+	db		"Usage:", 13, 10
+	db		"     sdmupd /opts <filename.ext>", 13, 10
+	db		"Example: sdmupd DRIVER.ROM", 13, 10
+	db		"         sdmupd /e", 13, 10
+	db		13, 10
+	db		"Options:", 13, 10
+	db		"     /h : Show this help.", 13, 10
+	db		"     /l : Show list of supported chips.", 13, 10
+	db		"     /e : Only erase flash and exit.", 13, 10
+	db		'$'
 
 strProcuraFlash:
-	.db		"Searching SD Mapper in system ...", 13, 10
-	.db		'$'
+	db		"Searching SD Mapper in system ...", 13, 10
+	db		'$'
 
 strNaoAchado:
-	.db		"Oops! SD Mapper not Found!!", 13, 10
-	.db		'$'
+	db		"Oops! SD Mapper not Found!!", 13, 10
+	db		'$'
 
 strAchado:
-	.db		"Found in slot "
+	db		"Found in slot "
 .slot:
-	.db		'0'
-	.db		" subslot "
+	db		'0'
+	db		" subslot "
 .subslot:
-	.db		'0:', 13, 10
-	.db		'$'
+	db		'0:', 13, 10
+	db		'$'
 
 strTraco:
-	.db		" - $"
+	db		" - $"
 
 strOk:
-	.db		" OK!", 13, 10
-	.db		'$'
+	db		" OK!", 13, 10
+	db		'$'
 
 strErro:
-	.db		13, 10
-	.db		"ERROR (BDOS)!!!!", 13, 10
-	.db		'$'
+	db		13, 10
+	db		"ERROR (BDOS)!!!!", 13, 10
+	db		'$'
 
 strErroAbrirArq:
-	.db		13, 10
-	.db		"ERROR: Problems opening file ...", 13, 10
-	.db		'$'
+	db		13, 10
+	db		"ERROR: Problems opening file ...", 13, 10
+	db		'$'
 
 strTamanhoErrado:
-	.db		13, 10
-	.db		"ERROR: File size must be 128KB"
-	.db		13, 10, '$'
+	db		13, 10
+	db		"ERROR: File size must be 128KB"
+	db		13, 10, '$'
 
 strAbrirArq:
-	.db		13, 10
-	.db		"Open file : "
+	db		13, 10
+	db		"Open file : "
 .nomearq:
-	.db		"                "
-	.db		13, 10, '$'
+	db		"                "
+	db		13, 10, '$'
 
 strApagarFlash:
-	.db		13, 10
-	.db		"Erasing Flash "
-	.db		'$'
+	db		13, 10
+	db		"Erasing Flash "
+	db		'$'
 
 strPonto:
-	.db		'*$'
+	db		'*$'
 
 strGravando:
-	.dw 	13, 10
-	.db		"Loading "
-	.db 	'$'
+	db 		13, 10
+	db		"Loading "
+	db 		'$'
 
 strErroAoGravarFlash:
-	.db		13, 10
-	.db		"ERROR: Problems writing Flash ...", 13, 10
-	.db		'$'
+	db		13, 10
+	db		"ERROR: Problems writing Flash ...", 13, 10
+	db		'$'
 
 strUpdateCompleto:
-	.db		13, 10
-	.db		"Flash programmed succesfully.", 13, 10
-	.db		'$'
+	db		13, 10
+	db		"Flash programmed succesfully.", 13, 10
+	db		'$'
 
 strListaCab:
-	.db		13, 10
-	.db		"List of supported flash chips:", 13, 10
-	.db		"------------------------------", 13, 10
-	.db		'$'
+	db		13, 10
+	db		"List of supported flash chips:", 13, 10
+	db		"------------------------------", 13, 10
+	db		'$'
 
 ; *** TABLES ***
-; AT49F002    = $1F $07		alg byte
-; AT49F002T   = $1F $08		alg byte
-; AT49(H)F010 = $1F $17		alg byte
-; AT29C010A   = $1F $D5		alg 128-page
-; AM29F010    = $01 $20		alg byte
-; SST29EE010  = $BF $07		alg 128-page
-; SST39SF020  = $BF $B6		alg byte
-; W49F002U/N  = $DA $0B		alg byte
-; W49F002B    = $DA $25		alg byte
-; W39F010     = $DA $A1		alg byte
+; AT49F002    = #1F #07		alg byte
+; AT49F002T   = #1F #08		alg byte
+; AT49(H)F010 = #1F #17		alg byte
+; AT29C010A   = #1F #D5		alg 128-page
+; AM29F010    = #01 #20		alg byte
+; SST29EE010  = #BF #07		alg 128-page
+; SST39SF020  = #BF #B6		alg byte
+; W49F002U/N  = #DA #0B		alg byte
+; W49F002B    = #DA #25		alg byte
+; W39F010     = #DA #A1		alg byte
 ; 
 
 tblFlash:
-	.db		$1F, $07
-		.dw strAtmel
-		.dw strAt49f002
-		.db ALG_BYTE
-	.db		$1F, $08
-		.dw strAtmel
-		.dw	strAt49F002t
-		.db ALG_BYTE
-	.db		$1F, $17
-		.dw strAtmel
-		.dw	strAt49f010
-		.db ALG_BYTE
-	.db		$1F, $D5
-		.dw strAtmel
-		.dw strAt29c010a
-		.db ALG_PAGE
-	.db		$01, $20
-		.dw strAMD
-		.dw	strAm29F010
-		.db	ALG_BYTE
-	.db		$BF, $07
-		.dw	strSST
-		.dw	strSst29ee010
-		.db	ALG_PAGE
-	.db		$BF, $B6
-		.dw	strSST
-		.dw	strSst39sf020
-		.db	ALG_BYTE
-	.db		$DA, $0B
-		.dw	strWinb
-		.dw	strW49f002un
-		.db	ALG_BYTE
-	.db		$DA, $25
-		.dw	strWinb
-		.dw	strW49f002b
-		.db	ALG_BYTE
-	.db		$DA, $A1
-		.dw	strWinb
-		.dw	strW39f010
-		.db	ALG_BYTE
-	.db		$20, $20
-		.dw	strSTM
-		.dw	strSTM29F010B
-		.db	ALG_PAGE
-	.db		0
+	db		#1F, #07
+		dw strAtmel
+		dw strAt49f002
+		db ALG_BYTE
+	db		#1F, #08
+		dw strAtmel
+		dw	strAt49F002t
+		db ALG_BYTE
+	db		#1F, #17
+		dw strAtmel
+		dw	strAt49f010
+		db ALG_BYTE
+	db		#1F, #D5
+		dw strAtmel
+		dw strAt29c010a
+		db ALG_PAGE
+	db		#01, #20
+		dw strAMD
+		dw	strAm29F010
+		db	ALG_BYTE
+	db		#BF, #07
+		dw	strSST
+		dw	strSst29ee010
+		db	ALG_PAGE
+	db		#BF, #B6
+		dw	strSST
+		dw	strSst39sf020
+		db	ALG_BYTE
+	db		#DA, #0B
+		dw	strWinb
+		dw	strW49f002un
+		db	ALG_BYTE
+	db		#DA, #25
+		dw	strWinb
+		dw	strW49f002b
+		db	ALG_BYTE
+	db		#DA, #A1
+		dw	strWinb
+		dw	strW39f010
+		db	ALG_BYTE
+	db		#20, #20
+		dw	strSTM
+		dw	strSTM29F010B
+		db	ALG_PAGE
+	db		0
 
 strAtmel:
-	.db		"Atmel $"
+	db		"Atmel $"
 strAMD:
-	.db		"AMD $"
+	db		"AMD $"
 strSST:
-	.db		"SST $"
+	db		"SST $"
 strSTM:
-	.db		"STM $"
+	db		"STM $"
 strWinb:
-	.db		"Winbond $"
+	db		"Winbond $"
 strAt49f002:
-	.db		"AT49F002$"
+	db		"AT49F002$"
 strAt49F002t:
-	.db		"AT49F002T$"
+	db		"AT49F002T$"
 strAt49f010:
-	.db		"AT49F010$"
+	db		"AT49F010$"
 strAt29c010a:
-	.db		"AT29C010A$"
+	db		"AT29C010A$"
 strAm29F010:
-	.db		"AM29F010$"
+	db		"AM29F010$"
 strSst29ee010:
-	.db		"SST29EE010$"
+	db		"SST29EE010$"
 strSst39sf020:
-	.db		"SST39SF020$"
+	db		"SST39SF020$"
 strW49f002un:
-	.db		"W49F002U/N$"
+	db		"W49F002U/N$"
 strW49f002b:
-	.db		"W49F002B$"
+	db		"W49F002B$"
 strW39f010:
-	.db		"W39F010$"
+	db		"W39F010$"
 strSTM29F010B:
-	.db		"STM29F010B$"
+	db		"STM29F010B$"
 
 ; *** VARIABLES ***
 
-savesp:			.dw	0					; stack pointer
-savecpu:		.db	0					; cpu mode in Turbo R
-savecursor:		.db	0					; cursor
-dos:			.db	0					; dos version
-system:			.db	0					; msx version
-options:		.db	0					; options variable 1
-pages:			.db	0					; 16 Kb Pages
-actualpage:		.db	0					; Temporal page for load
-thisslt:		.db	0FFh				; sigslot flag
-flashslt:		.db	0					; slot for flash
-flashIdMan:		.db 0					; Flash Manufacturer ID
-flashIdProd:	.db 0					; Flash Product ID
-flashAlg		.db 0					; Flash algorithm
-flashManPoint:	.dw 0					; Flash manufacturer string pointer
-flashProdPoint:	.dw	0					; Flash product string pointer
-erasedelay:		.db	0					; tmp variable for loop times delay
-togglebit:		.db 0
-sizefiletmp:	.ds	4					; tmp variable for READMAX Code
-fileHandle:		.db	0					; DOS 2 File Handle
-fileNameDOS2:	.ds	64					; Tmp for fileName
-fileNameDOS1:	.db "        "			; DOS1 fileName for DOS1 Code
-filenDOS1Ext:	.db	"   "
-				.ds	4
+savesp:			dw	0					; stack pointer
+savecpu:		db	0					; cpu mode in Turbo R
+savecursor:		db	0					; cursor
+dos:			db	0					; dos version
+system:			db	0					; msx version
+options:		db	0					; options variable 1
+pages:			db	0					; 16 Kb Pages
+actualpage:		db	0					; Temporal page for load
+thisslt:		db	0FFh				; sigslot flag
+flashslt:		db	0					; slot for flash
+flashIdMan:		db 0					; Flash Manufacturer ID
+flashIdProd:	db 0					; Flash Product ID
+flashAlg:		db 0					; Flash algorithm
+flashManPoint:	dw 0					; Flash manufacturer string pointer
+flashProdPoint:	dw	0					; Flash product string pointer
+erasedelay:		db	0					; tmp variable for loop times delay
+togglebit:		db 0
+sizefiletmp:	ds	4					; tmp variable for READMAX Code
+fileHandle:		db	0					; DOS 2 File Handle
+fileNameDOS2:	ds	64					; Tmp for fileName
+fileNameDOS1:	db "        "			; DOS1 fileName for DOS1 Code
+filenDOS1Ext:	db	"   "
+				ds	4
 
 ; *** FCB DOS 1 ***
 FCB:
-unidad:		.db	0
-fileName:	.ds	8
-extname:	.ds	3
-			.dw	0
-registro:	.dw	0
-sizefile:	.ds	4
-			.ds	13
+unidad:		db	0
+fileName:	ds	8
+extname:	ds	3
+			dw	0
+registro:	dw	0
+sizefile:	ds	4
+			ds	13
 sizeread:
-			.ds	4
-			.db	0
+			ds	4
+			db	0
+end

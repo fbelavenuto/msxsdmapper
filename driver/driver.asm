@@ -1628,9 +1628,10 @@ GravarBloco:
 	ld	(PORTSPI),a
 
 	; Check for a Z80 or R800
+	ex	de, hl
 ;	ld	a,20
 	db	#ED,#F9		; mulub a,a
-	exx
+	ex	de, hl
 	ld	de,PORTSPI
 	jr	c,.r800s	; Use LDIR for R800
  rept 512
