@@ -54,9 +54,10 @@ DEBUG	equ	0	;Set to 1 for debugging, 0 to normal operation
 
 ;Driver version
 
-VER_MAIN	equ	1
-VER_SEC		equ	0
-VER_REV		equ	7
+include "VERSION.INC"
+;VER_MAIN	equ	1
+;VER_SEC		equ	0
+;VER_REV		equ	7
 
 ;-----------------------------------------------------------------------------
 ; SPI addresses. Check the Technical info above for the bit contents
