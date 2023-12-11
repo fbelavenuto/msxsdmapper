@@ -36,12 +36,11 @@ ${DESIGN}.jed: ${DESIGN}.vm6
 	hprep6 -s IEEE1149 -n ${DESIGN} -i ${DESIGN}
 
 # Clean up all the files from the Vivado run
-clean :
+clean:
 	rm -rf *.ngd *.bit *.map *.bld *.xml *.html *.jed *.nga *.err \
 	*.xrpt *.txt *.pad *.csv xlnx_auto* _xmsgs *.lso *_html *.xml \
 	*.ngc *.ngr *.srp *.lst *.gyd *.mfd *.pnx *.rpt *.vm6
 
 # Tar and compress all the files
-#tar :
-#	tar -zcvf ${DESIGN}.tar.gz *.ncd *.ngd *.mrp *.map *.par *.bld *.pcf *.bgn \
-#	Makefile
+tar:
+	tar -czvf ${DESIGN}.tar.gz *.ipf *.xsl *.prj *.svf *.xise *.xst *.xsvf Makefile

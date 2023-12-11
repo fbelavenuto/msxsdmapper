@@ -1,0 +1,3 @@
+VER_MAIN	equ	1
+VER_SEC	equ	0
+VER_REV	equ	7
