@@ -1,8 +1,6 @@
 *.cmd
 *.log
 *.lst
-/CPLD/_xmsgs
-/CPLD/iseconfig
 /CPLD/*.xwbt
 /CPLD/*.jed
 /CPLD/*.bld
@@ -31,6 +29,8 @@
 /CPLD/*.srp
 /CPLD/src/*.lfp
 /CPLD/*.err
+/CPLD/iseconfig
+/CPLD/_xmsgs
 /CPLD/sdmapper_html/fit
 /CPLD/sdmapper_html/images
 /CPLD/sdmapper_html/tim

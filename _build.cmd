@@ -20,6 +20,7 @@ IF ERRORLEVEL 1 GOTO error
 
 echo Building CPLD bitstream
 docker run --rm -it -v %cd%/CPLD:/workdir fbelavenuto/xilinxise make
+IF ERRORLEVEL 1 GOTO error
 
 goto ok
 
